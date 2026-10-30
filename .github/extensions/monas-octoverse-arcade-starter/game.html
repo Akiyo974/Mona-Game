@@ -52,7 +52,7 @@
         <p class="eyebrow">Mona's Octoverse Arcade</p>
         <h1>Fort Mason Octodex</h1>
       </div>
-      <div><span class="count">Octocats: <span id="count">0</span>/<span id="total">0</span></span> <button id="invBtn" type="button" class="secondary">Inventory (I)</button></div>
+      <div><span class="count">Octocats: <span id="count">0</span>/<span id="total">0</span></span> <button id="invBtn" type="button" class="secondary">Inventory (I)</button> <button id="badgeBtn" type="button" class="secondary">Connect badge</button></div>
     </div>
     <div class="stage">
       <canvas id="game" width="640" height="448" tabindex="0" aria-label="Fort Mason map"></canvas>
@@ -457,7 +457,7 @@
 
     /* ---------- Gamepad / controller ---------- */
     // Standard mapping: 0=A 1=B 3=Y 9=Start, 12-15=D-pad, axes 0/1=left stick.
-    const pad = { x: 0, y: 0, id: null, prev: [] };
+    const pad = { x: 0, y: 0, id: null, prev: {} };
     const DEAD = 0.25, BASE_TITLE = document.title;
     function activePad() {
       for (const g of (navigator.getGamepads ? navigator.getGamepads() : [])) if (g && g.connected) return g;
@@ -468,24 +468,63 @@
       document.title = g ? "Controller: " + g.id : BASE_TITLE;
     }
     addEventListener("gamepadconnected", (e) => { padStatus(e.gamepad); toast("Controller connected: " + e.gamepad.id); });
-    addEventListener("gamepaddisconnected", () => { pad.x = pad.y = 0; pad.prev = []; padStatus(activePad()); toast("Controller disconnected"); });
+    addEventListener("gamepaddisconnected", () => { pad.x = pad.y = 0; pad.prev = {}; padStatus(activePad()); toast("Controller disconnected"); });
     function pollGamepad() {
       const g = activePad();
-      if (!g) { pad.x = pad.y = 0; return; }
-      if (pad.id !== g.id) padStatus(g);
-      const b = (i) => !!(g.buttons[i] && g.buttons[i].pressed);
-      let x = g.axes[0] || 0, y = g.axes[1] || 0;
-      if (Math.hypot(x, y) < DEAD) x = y = 0;
-      x += (b(15) ? 1 : 0) - (b(14) ? 1 : 0); y += (b(13) ? 1 : 0) - (b(12) ? 1 : 0);
+      if (g && pad.id !== g.id) padStatus(g);
+      const b = (i) => !!(g && g.buttons[i] && g.buttons[i].pressed);
+      let x = 0, y = 0;
+      if (g) {
+        x = g.axes[0] || 0; y = g.axes[1] || 0;
+        if (Math.hypot(x, y) < DEAD) x = y = 0;
+      }
+      // Badge buttons (USB serial) are merged with the gamepad: up/down/left/right, select = A, back = B
+      x += (b(15) || badgeHeld.has("right") ? 1 : 0) - (b(14) || badgeHeld.has("left") ? 1 : 0);
+      y += (b(13) || badgeHeld.has("down") ? 1 : 0) - (b(12) || badgeHeld.has("up") ? 1 : 0);
       const inGame = scene === "world" && $("inv").hidden;
       pad.x = inGame ? x : 0; pad.y = inGame ? y : 0;
-      const pressed = (i) => b(i) && !pad.prev[i];
-      if (pressed(0) && scene === "battle") fight();
-      if (pressed(1) && (scene === "battle" || scene === "pick")) runAway();
-      if ((pressed(3) || pressed(9)) && scene === "world") setInventory($("inv").hidden);
-      if (pressed(1) && scene === "world" && !$("inv").hidden) setInventory(false);
-      pad.prev = g.buttons.map((_, i) => b(i));
+      const A = b(0) || badgeHeld.has("select"), B = b(1) || badgeHeld.has("back");
+      const Y = b(3) || b(9);
+      const was = pad.prev;
+      pad.prev = { A, B, Y };
+      if (A && !was.A && scene === "battle") fight();
+      if (A && !was.A && scene === "world" && inGame) setInventory(true);
+      if (B && !was.B && (scene === "battle" || scene === "pick")) runAway();
+      if (B && !was.B && scene === "world" && !$("inv").hidden) setInventory(false);
+      if (Y && !was.Y && scene === "world") setInventory($("inv").hidden);
     }
+
+    /* ---------- Badger badge over USB serial (Web Serial) ---------- */
+    // The Controller app on the badge prints "+up" / "-up" lines for each press / release.
+    const badgeHeld = new Set();
+    let badgePort = null;
+    async function connectBadge() {
+      if (!("serial" in navigator)) { toast("Web Serial is not available in this browser"); return; }
+      try {
+        badgePort = await navigator.serial.requestPort();
+        await badgePort.open({ baudRate: 115200 });
+      } catch (e) { toast("Badge not connected: " + (e.message || e.name)); return; }
+      $("badgeBtn").textContent = "Badge connected";
+      toast("Badge connected - open the Controller app on it");
+      const reader = badgePort.readable.pipeThrough(new TextDecoderStream()).getReader();
+      let buf = "";
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += value;
+          let i;
+          while ((i = buf.indexOf("\n")) >= 0) {
+            const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+            const m = /^([+-])(up|down|left|right|select|back)$/.exec(line);
+            if (m) m[1] === "+" ? badgeHeld.add(m[2]) : badgeHeld.delete(m[2]);
+          }
+        }
+      } catch (e) { /* cable unplugged */ }
+      badgeHeld.clear(); badgePort = null;
+      $("badgeBtn").textContent = "Connect badge"; toast("Badge disconnected");
+    }
+    $("badgeBtn").addEventListener("click", () => { if (!badgePort) connectBadge(); });
 
     updateCount(); renderInventory();
     requestAnimationFrame((t) => { last = t; loop(t); });
