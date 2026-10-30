@@ -458,14 +458,14 @@
     /* ---------- Gamepad / controller ---------- */
     // Standard mapping: 0=A 1=B 3=Y 9=Start, 12-15=D-pad, axes 0/1=left stick.
     const pad = { x: 0, y: 0, id: null, prev: [] };
-    const DEAD = 0.25;
+    const DEAD = 0.25, BASE_TITLE = document.title;
     function activePad() {
       for (const g of (navigator.getGamepads ? navigator.getGamepads() : [])) if (g && g.connected) return g;
       return null;
     }
     function padStatus(g) {
       pad.id = g ? g.id : null;
-      document.title = g ? "Controller: " + g.id : document.title.replace(/^Controller: .*/, "Mona's Octoverse Arcade");
+      document.title = g ? "Controller: " + g.id : BASE_TITLE;
     }
     addEventListener("gamepadconnected", (e) => { padStatus(e.gamepad); toast("Controller connected: " + e.gamepad.id); });
     addEventListener("gamepaddisconnected", () => { pad.x = pad.y = 0; pad.prev = []; padStatus(activePad()); toast("Controller disconnected"); });
