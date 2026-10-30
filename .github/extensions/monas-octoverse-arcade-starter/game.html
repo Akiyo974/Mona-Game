@@ -479,12 +479,28 @@
       const A = b(0) || badgeHeld.has("select"), B = b(1) || badgeHeld.has("back");
       const Y = b(3) || b(9);
       const was = pad.prev;
-      pad.prev = { A, B, Y };
-      if (A && !was.A && scene === "battle") fight();
-      if (A && !was.A && scene === "world" && inGame) setInventory(true);
-      if (B && !was.B && (scene === "battle" || scene === "pick")) runAway();
-      if (B && !was.B && scene === "world" && !$("inv").hidden) setInventory(false);
-      if (Y && !was.Y && scene === "world") setInventory($("inv").hidden);
+      const L = x < -0.5, R = x > 0.5, U = y < -0.5, D = y > 0.5;
+      pad.prev = { A, B, Y, L, R, U, D };
+      if (scene === "pick") {
+        // D-pad / stick moves the highlight over the Octocat cards, A picks the fighter, B runs
+        const cards = [...$("pickGrid").children];
+        let i = Math.max(0, cards.indexOf(document.activeElement));
+        const cols = Math.max(1, cards.filter((c) => c.offsetTop === cards[0].offsetTop).length);
+        if (R && !was.R) i = Math.min(cards.length - 1, i + 1);
+        if (L && !was.L) i = Math.max(0, i - 1);
+        if (D && !was.D) i = Math.min(cards.length - 1, i + cols);
+        if (U && !was.U) i = Math.max(0, i - cols);
+        if (cards[i] && cards[i] !== document.activeElement) cards[i].focus();
+        if (A && !was.A && cards[i]) cards[i].click();
+        else if (B && !was.B) runAway();
+      } else if (scene === "battle") {
+        if (A && !was.A) fight();
+        else if (B && !was.B) runAway();
+      } else if (scene === "world") {
+        if (A && !was.A && inGame) setInventory(true);
+        else if (B && !was.B && !inGame) setInventory(false);
+        else if (Y && !was.Y) setInventory($("inv").hidden);
+      }
     }
 
     /* ---------- Badger badge over USB serial (Web Serial) ---------- */
