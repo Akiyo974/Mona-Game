@@ -1,3 +1,4 @@
+<!-- At least a portion of the code below was created using AI Tool GitHub Copilot. -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -200,18 +201,120 @@
     loadImg("player", ASSETS.player);
     for (const [id, src] of Object.entries(ASSETS.octocats)) loadImg(id, src);
 
-    /* ---------- Sprites (placeholders) ---------- */
-    function drawOctocat(c, x, y, s, color, t, img) {
+    /* ---------- Octocat sprites ---------- */
+    const OCTOCAT_STYLES = {
+      octocat: { kind: "classic", accent: "#d2a8ff" },
+      mona: { kind: "scout", accent: "#f2cc60" },
+      dinotocat: { kind: "dino", accent: "#2f8f46" },
+      daftpunkcat: { kind: "dj", accent: "#f2cc60" },
+      jetpacktocat: { kind: "pilot", accent: "#ff7b32" },
+      spidertocat: { kind: "spider", accent: "#0d1117" },
+      scottocat: { kind: "hiker", accent: "#2f8f46" },
+      heisencat: { kind: "chemist", accent: "#0d1117" },
+      privateer: { kind: "pirate", accent: "#da3633" },
+      nyantocat: { kind: "nyan", accent: "#ff7b72" },
+      chellocat: { kind: "chello", accent: "#f0883e" },
+      defunktocat: { kind: "ghost", accent: "#e6edf3" }
+    };
+    function drawOctocat(c, x, y, s, id, color, t, img) {
       if (img) { c.drawImage(img, x - s / 2, y - s / 2, s, s); return; }
       const b = Math.sin(t * 4) * s * 0.03;
-      c.save(); c.translate(x, y + b);
-      c.strokeStyle = color; c.lineWidth = s * 0.09; c.lineCap = "round";
-      for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * s * 0.12, s * 0.2); c.quadraticCurveTo(i * s * 0.2, s * 0.42, i * s * 0.28 + Math.sin(t * 3 + i) * s * 0.04, s * 0.46); c.stroke(); }
-      c.fillStyle = color; c.beginPath(); c.arc(0, 0, s * 0.34, 0, 7); c.fill();
-      c.beginPath(); c.moveTo(-s * 0.32, -s * 0.12); c.lineTo(-s * 0.3, -s * 0.46); c.lineTo(-s * 0.08, -s * 0.3); c.fill();
-      c.beginPath(); c.moveTo(s * 0.32, -s * 0.12); c.lineTo(s * 0.3, -s * 0.46); c.lineTo(s * 0.08, -s * 0.3); c.fill();
-      c.fillStyle = "#fff"; c.beginPath(); c.arc(-s * 0.13, -s * 0.03, s * 0.08, 0, 7); c.arc(s * 0.13, -s * 0.03, s * 0.08, 0, 7); c.fill();
-      c.fillStyle = "#0d1117"; c.beginPath(); c.arc(-s * 0.13, -s * 0.03, s * 0.04, 0, 7); c.arc(s * 0.13, -s * 0.03, s * 0.04, 0, 7); c.fill();
+      const style = OCTOCAT_STYLES[id] || OCTOCAT_STYLES.octocat, accent = style.accent;
+      const poly = (pts, fill) => {
+        c.fillStyle = fill; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+        c.closePath(); c.fill();
+      };
+      const line = (pts, stroke, width) => {
+        c.strokeStyle = stroke; c.lineWidth = width; c.lineCap = "round"; c.lineJoin = "round";
+        c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+        c.stroke();
+      };
+      c.save(); c.translate(x, y + b); c.scale(s, s);
+      if (style.kind === "chello") {
+        c.strokeStyle = "#39d2c0"; c.lineWidth = 0.075; c.beginPath(); c.arc(-0.4, 0.18, 0.2, 0, 7); c.stroke();
+        c.strokeStyle = "#a5f3e7"; c.lineWidth = 0.025; c.beginPath(); c.arc(-0.4, 0.18, 0.13, 0, 7); c.stroke();
+      }
+      if (style.kind === "pilot") {
+        c.fillStyle = accent; c.fillRect(0.23, -0.12, 0.2, 0.34);
+        c.fillStyle = "#ffd33d"; c.beginPath(); c.moveTo(0.33, 0.2); c.lineTo(0.25, 0.42); c.lineTo(0.34, 0.36); c.lineTo(0.42, 0.44); c.fill();
+      }
+      if (style.kind === "spider") {
+        for (const side of [-1, 1]) for (let i = 0; i < 2; i++) {
+          line([[side * 0.27, 0.03 + i * 0.1], [side * 0.43, -0.04 + i * 0.16], [side * 0.48, 0.06 + i * 0.16]], accent, 0.035);
+        }
+      }
+      if (style.kind === "nyan") {
+        for (let i = 0; i < 6; i++) line([[-0.25, -0.14 + i * 0.055], [-0.52, -0.14 + i * 0.055]], ["#f85149", "#ff9bce", "#f2cc60", "#3fb950", "#58a6ff", "#d2a8ff"][i], 0.055);
+      }
+      if (style.kind === "ghost") {
+        poly([[-0.27, 0.11], [-0.48, 0.02], [-0.43, 0.23], [-0.29, 0.29]], "#6e40c9");
+        poly([[0.27, 0.11], [0.48, 0.02], [0.43, 0.23], [0.29, 0.29]], "#6e40c9");
+      }
+      c.strokeStyle = color; c.lineWidth = 0.07; c.lineCap = "round";
+      for (let i = -2; i <= 2; i++) {
+        c.beginPath(); c.moveTo(i * 0.085, 0.2);
+        c.quadraticCurveTo(i * 0.14, 0.42, i * 0.2 + Math.sin(t * 3 + i) * 0.025, 0.46); c.stroke();
+      }
+      c.fillStyle = color; c.beginPath(); c.arc(0, 0, 0.34, 0, 7); c.fill();
+      poly([[-0.32, -0.12], [-0.3, -0.46], [-0.08, -0.3]], color);
+      poly([[0.32, -0.12], [0.3, -0.46], [0.08, -0.3]], color);
+      c.fillStyle = "#fff"; c.beginPath(); c.arc(-0.13, -0.03, 0.08, 0, 7); c.arc(0.13, -0.03, 0.08, 0, 7); c.fill();
+      c.fillStyle = "#0d1117"; c.beginPath(); c.arc(-0.13, -0.03, 0.04, 0, 7); c.arc(0.13, -0.03, 0.04, 0, 7); c.fill();
+
+      if (style.kind === "scout") {
+        poly([[-0.23, -0.28], [-0.08, -0.5], [0, -0.32], [0.1, -0.52], [0.25, -0.27]], accent);
+        poly([[-0.3, 0.12], [0, 0.2], [0.3, 0.12], [0.22, 0.25], [0, 0.31], [-0.22, 0.25]], "#f85149");
+        c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0.23, 0.035, 0, 7); c.fill();
+      } else if (style.kind === "dino") {
+        for (let i = 0; i < 4; i++) poly([[-0.22 + i * 0.13, -0.25], [-0.16 + i * 0.13, -0.43], [-0.08 + i * 0.13, -0.24]], accent);
+        poly([[0.23, 0.08], [0.5, 0.2], [0.46, 0.3], [0.23, 0.22]], color);
+        c.fillStyle = "#fff"; c.beginPath(); c.arc(0.13, 0.02, 0.035, 0, 7); c.fill();
+      } else if (style.kind === "dj") {
+        c.fillStyle = "#161b22"; c.fillRect(-0.32, -0.25, 0.64, 0.19);
+        c.fillStyle = accent; c.fillRect(-0.29, -0.22, 0.58, 0.1);
+        c.fillStyle = "#0d1117"; c.fillRect(-0.2, -0.2, 0.14, 0.055); c.fillRect(0.06, -0.2, 0.14, 0.055);
+        c.strokeStyle = accent; c.lineWidth = 0.045; c.beginPath(); c.arc(0, -0.17, 0.39, Math.PI, 0); c.stroke();
+      } else if (style.kind === "pilot") {
+        c.strokeStyle = "#c9d1d9"; c.lineWidth = 0.035; c.beginPath(); c.arc(0, -0.06, 0.42, Math.PI * 1.08, Math.PI * 1.92); c.stroke();
+        c.fillStyle = accent; c.fillRect(-0.17, 0.21, 0.34, 0.12);
+      } else if (style.kind === "chello") {
+        c.fillStyle = "#30363d"; c.fillRect(-0.35, -0.34, 0.7, 0.075);
+        c.fillStyle = accent; c.fillRect(-0.12, -0.34, 0.24, 0.045);
+        c.fillStyle = accent; c.fillRect(-0.18, 0.19, 0.36, 0.15);
+        line([[-0.18, 0.2], [0.18, 0.34]], "#f2cc60", 0.035);
+        c.fillStyle = "#8b949e"; c.fillRect(0.28, 0.08, 0.16, 0.1); c.fillRect(0.37, 0.05, 0.08, 0.16);
+        c.fillStyle = "#39d2c0"; c.beginPath(); c.arc(0.42, 0.13, 0.055, 0, 7); c.fill();
+      } else if (style.kind === "spider") {
+        c.strokeStyle = "#fff"; c.lineWidth = 0.018;
+        for (let i = -1; i <= 1; i++) { c.beginPath(); c.moveTo(i * 0.12, -0.12); c.lineTo(i * 0.12, -0.28); c.stroke(); }
+        c.beginPath(); c.moveTo(-0.23, -0.18); c.lineTo(0.23, -0.18); c.moveTo(-0.2, -0.25); c.lineTo(0.2, -0.1); c.moveTo(0.2, -0.25); c.lineTo(-0.2, -0.1); c.stroke();
+      } else if (style.kind === "hiker") {
+        c.fillStyle = "#6e4428"; c.fillRect(0.26, -0.12, 0.18, 0.32);
+        c.fillStyle = accent; c.fillRect(-0.4, -0.33, 0.8, 0.07); c.fillRect(-0.21, -0.47, 0.42, 0.16);
+        c.fillStyle = "#f2cc60"; c.fillRect(-0.21, -0.33, 0.42, 0.04);
+      } else if (style.kind === "chemist") {
+        poly([[-0.32, -0.27], [-0.22, -0.43], [0.2, -0.43], [0.32, -0.27], [0.2, -0.3], [0, -0.25], [-0.2, -0.3]], accent);
+        c.fillStyle = "#0d1117"; c.fillRect(-0.22, -0.06, 0.17, 0.055); c.fillRect(0.05, -0.06, 0.17, 0.055);
+        c.strokeStyle = accent; c.lineWidth = 0.025; c.beginPath(); c.moveTo(-0.05, -0.03); c.lineTo(0.05, -0.03); c.stroke();
+        c.fillStyle = "#58a6ff"; c.fillRect(0.21, 0.18, 0.12, 0.16);
+      } else if (style.kind === "pirate") {
+        poly([[-0.42, -0.27], [-0.25, -0.34], [-0.12, -0.49], [0, -0.34], [0.2, -0.47], [0.29, -0.3], [0.42, -0.23]], "#30363d");
+        c.fillStyle = accent; c.fillRect(-0.22, -0.31, 0.44, 0.05);
+        c.fillStyle = "#0d1117"; c.beginPath(); c.arc(0.13, -0.03, 0.075, 0, 7); c.fill();
+        line([[-0.2, -0.05], [0.2, -0.05]], "#0d1117", 0.035);
+        poly([[-0.28, 0.17], [0, 0.23], [0.28, 0.17], [0.2, 0.3], [0, 0.34], [-0.2, 0.3]], accent);
+      } else if (style.kind === "nyan") {
+        c.fillStyle = "#fff"; c.beginPath(); c.ellipse(0, 0.2, 0.2, 0.13, 0, 0, 7); c.fill();
+        for (let i = 0; i < 4; i++) { c.fillStyle = ["#f85149", "#f2cc60", "#58a6ff", "#d2a8ff"][i]; c.fillRect(-0.11 + i * 0.07, 0.14 + (i % 2) * 0.08, 0.035, 0.035); }
+        poly([[0.29, -0.42], [0.34, -0.3], [0.47, -0.29], [0.37, -0.21], [0.4, -0.08], [0.29, -0.15], [0.18, -0.08], [0.21, -0.21], [0.11, -0.29], [0.24, -0.3]], "#ffd33d");
+      } else if (style.kind === "ghost") {
+        poly([[-0.36, -0.22], [-0.3, -0.47], [-0.08, -0.35], [0, -0.48], [0.08, -0.35], [0.3, -0.47], [0.36, -0.22]], "#6e40c9");
+        c.fillStyle = "#0d1117"; c.beginPath(); c.ellipse(-0.13, -0.03, 0.045, 0.08, 0, 0, 7); c.ellipse(0.13, -0.03, 0.045, 0.08, 0, 0, 7); c.fill();
+        poly([[-0.22, 0.18], [-0.11, 0.12], [0, 0.18], [0.11, 0.12], [0.22, 0.18], [0.15, 0.27], [0, 0.3], [-0.15, 0.27]], "#e6edf3");
+        c.fillStyle = "#6e40c9"; c.fillRect(-0.03, 0.18, 0.06, 0.08);
+      }
       c.restore();
     }
     function drawPlayer(c, x, y, t) {
@@ -430,7 +533,7 @@
         if (collected.has(c.id)) continue;
         const cx = c.tx * TS + TS / 2, cy = c.ty * TS + TS / 2;
         ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(cx, cy + 12, 11, 4, 0, 0, 7); ctx.fill();
-        drawOctocat(ctx, cx, cy, 30, c.color, time + c.tx, images[c.id]);
+        drawOctocat(ctx, cx, cy, 30, c.id, c.color, time + c.tx, images[c.id]);
       }
       drawPlayer(ctx, player.x, player.y, time);
       ctx.restore();
@@ -518,8 +621,8 @@
         if (!b.hit && p > 0.5) fx += Math.sin((p - 0.5) * Math.PI * 2) * 70;
       }
       if (b.phase === "ko") { fa = Math.max(0, 1 - b.t / 1.0); fy += b.t * 40; }
-      c.globalAlpha = fa; drawOctocat(c, fx, fy, 100, b.foe.color, time, images[b.foe.id]); c.globalAlpha = 1;
-      drawOctocat(c, px, py, 130, b.fighter.color, time, images[b.fighter.id]);
+      c.globalAlpha = fa; drawOctocat(c, fx, fy, 100, b.foe.id, b.foe.color, time, images[b.foe.id]); c.globalAlpha = 1;
+      drawOctocat(c, px, py, 130, b.fighter.id, b.fighter.color, time, images[b.fighter.id]);
       if (b.phase === "attack" && b.t / 0.8 > 0.45 && b.t / 0.8 < 0.85) {   // impact burst
         c.save(); c.translate(fx, fy); c.rotate(b.t * 8); c.fillStyle = b.hit ? "#ffd33d" : "#8b949e"; c.beginPath();
         for (let i = 0; i < 16; i++) { const r = i % 2 ? 22 : 46; c.lineTo(Math.cos(i * Math.PI / 8) * r, Math.sin(i * Math.PI / 8) * r); }
@@ -544,7 +647,7 @@
       card.type = "button"; card.className = "card " + (found ? "found" : "locked") + (opts.selected ? " selected" : "");
       if (found) {
         const cc = document.createElement("canvas"); cc.width = cc.height = 64;
-        drawOctocat(cc.getContext("2d"), 32, 30, 56, c.color, 0, images[c.id]); card.appendChild(cc);
+        drawOctocat(cc.getContext("2d"), 32, 30, 56, c.id, c.color, 0, images[c.id]); card.appendChild(cc);
       } else { const q = document.createElement("span"); q.className = "q"; q.textContent = "?"; card.appendChild(q); }
       const name = document.createElement("span"); name.textContent = found ? c.name : "Undiscovered"; card.appendChild(name);
       if (found && opts.showMove) { const mv = document.createElement("span"); mv.className = "mv"; mv.textContent = moveOf(c.id).name; card.appendChild(mv); }
