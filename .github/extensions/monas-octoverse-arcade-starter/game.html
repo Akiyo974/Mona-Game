@@ -35,6 +35,12 @@
     button.secondary { background: #30363d; }
     button.secondary:hover { background: #3d444d; }
     button:focus-visible, .card:focus-visible { outline: 3px solid #58a6ff; outline-offset: 2px; }
+    .card .mv { color: #8b949e; font-size: 0.65rem; }
+    #battleUI { position: absolute; left: 0.5rem; right: 0.5rem; bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem 0.75rem; background: rgba(13,17,23,.93); border: 2px solid #30363d; border-radius: 0.5rem; }
+    #battleUI[hidden] { display: none; }
+    #battleMsg { margin: 0; min-height: 1.5rem; font-weight: 700; }
+    #battleUI .row { display: flex; gap: 0.5rem; }
+    button:disabled { opacity: .5; cursor: default; }
     .help { margin: 0.5rem 0 0; color: #8b949e; font-size: 0.8rem; }
     kbd { padding: 0 0.3rem; background: #0d1117; border: 1px solid #30363d; border-radius: 0.25rem; font-size: 0.75rem; }
   </style>
@@ -51,6 +57,14 @@
     <div class="stage">
       <canvas id="game" width="640" height="448" tabindex="0" aria-label="Fort Mason map"></canvas>
       <div id="toast" role="status" aria-live="polite"></div>
+      <section class="overlay" id="pick" hidden aria-label="Choose your Octocat">
+        <header><h2 id="pickTitle">Choose your Octocat</h2><button id="pickRun" type="button" class="secondary">Run (Esc)</button></header>
+        <div class="grid" id="pickGrid"></div>
+      </section>
+      <div id="battleUI" hidden>
+        <p id="battleMsg" role="status" aria-live="polite"></p>
+        <div class="row"><button id="fightBtn" type="button">Fight</button><button id="runBtn" type="button" class="secondary">Run (Esc)</button></div>
+      </div>
       <section class="overlay" id="inv" hidden aria-label="Inventory">
         <header><h2>Octodex <span id="invCount"></span></h2><button id="closeInv" type="button">Close (I)</button></header>
         <div class="grid" id="grid"></div>
@@ -67,7 +81,7 @@
       octocats: {} // e.g. { octocat: "assets/octocat.png" }
     };
 
-    const TS = 32, MW = 48, MH = 34, VW = 640, VH = 448, STORE = "fort-mason-octodex-v1";
+    const TS = 32, MW = 48, MH = 34, VW = 640, VH = 448, STORE = "fort-mason-octodex-v2", OLD_STORE = "fort-mason-octodex-v1";
     const cv = document.getElementById("game"), ctx = cv.getContext("2d");
     const $ = (id) => document.getElementById(id);
 
@@ -169,10 +183,25 @@
     renderMap();
 
     /* ---------- State ---------- */
-    let collected = new Set(), keys = {}, last = 0, toastT = 0, selected = null, time = 0;
+    let collected = new Set(), moves = {}, keys = {}, last = 0, toastT = 0, selected = null, time = 0;
+    let scene = "world", battle = null, encounterCd = 0, pendingFoe = null;
     const player = { x: SPAWN.tx * TS + TS / 2, y: SPAWN.ty * TS + TS / 2, dir: "down", moving: false, w: 20, h: 12, speed: 150 };
-    try { const s = JSON.parse(localStorage.getItem(STORE) || "[]"); collected = new Set(s.filter((id) => OCTOCATS.some((c) => c.id === id))); } catch (e) { /* storage unavailable */ }
-    const save = () => { try { localStorage.setItem(STORE, JSON.stringify([...collected])); } catch (e) { /* ignore */ } };
+    const MOVES = [
+      { name: "Commit Strike", acc: 100 }, { name: "Merge Slam", acc: 90 }, { name: "Pull Request Punch", acc: 85 },
+      { name: "Branch Slash", acc: 95 }, { name: "Rebase Rush", acc: 80 }, { name: "Stash Smash", acc: 90 },
+      { name: "Force Push", acc: 70 }, { name: "Fork Bomb", acc: 60 }
+    ];
+    const moveOf = (id) => MOVES.find((m) => m.name === moves[id]) || MOVES[0];
+    function rollMoves() { for (const c of OCTOCATS) moves[c.id] = MOVES[Math.floor(Math.random() * MOVES.length)].name; }
+    try {
+      const s = JSON.parse(localStorage.getItem(STORE) || "null");
+      const ids = s ? s.collected : JSON.parse(localStorage.getItem(OLD_STORE) || "[]");
+      collected = new Set((ids || []).filter((id) => OCTOCATS.some((c) => c.id === id)));
+      if (s && s.moves) for (const c of OCTOCATS) if (MOVES.some((m) => m.name === s.moves[c.id])) moves[c.id] = s.moves[c.id];
+    } catch (e) { /* storage unavailable */ }
+    for (const c of OCTOCATS) if (!moves[c.id]) moves[c.id] = MOVES[Math.floor(Math.random() * MOVES.length)].name;
+    const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ collected: [...collected], moves })); } catch (e) { /* ignore */ } };
+    save();
 
     const images = {};
     function loadImg(key, src) { if (!src) return; const im = new Image(); im.onload = () => { images[key] = im; }; im.src = src; }
@@ -234,9 +263,14 @@
         if (!blocked(nx, player.y)) player.x = nx;
         if (!blocked(player.x, ny)) player.y = ny;
       }
-      for (const c of OCTOCATS) {
+      if (encounterCd > 0) encounterCd -= dt;
+      else for (const c of OCTOCATS) {
         if (collected.has(c.id)) continue;
-        if (Math.hypot(player.x - (c.tx * TS + TS / 2), (player.y - 8) - (c.ty * TS + TS / 2)) < 22) collect(c);
+        if (Math.hypot(player.x - (c.tx * TS + TS / 2), (player.y - 8) - (c.ty * TS + TS / 2)) < 22) {
+          if (collected.size === 0) collect(c); // the first Octocat is free
+          else startPick(c);
+          break;
+        }
       }
       if (toastT > 0 && (toastT -= dt) <= 0) $("toast").classList.remove("show");
     }
@@ -258,41 +292,145 @@
     }
     function loop(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
-      if ($("inv").hidden) update(dt);
-      render();
+      if (scene === "battle") { updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
+      else { if (scene === "world" && $("inv").hidden) update(dt); render(); }
+      if (toastT > 0 && scene !== "world" && (toastT -= dt) <= 0) $("toast").classList.remove("show");
       requestAnimationFrame(loop);
+    }
+
+    /* ---------- Battles ---------- */
+    function startPick(foe) {
+      scene = "pick"; pendingFoe = foe; keys = {}; player.moving = false;
+      $("pickTitle").textContent = "Choose an Octocat to battle " + foe.name;
+      const g = $("pickGrid"); g.textContent = "";
+      for (const c of OCTOCATS.filter((o) => collected.has(o.id))) g.appendChild(makeCard(c, true, { showMove: true, onClick: () => startBattle(c, foe) }));
+      $("pick").hidden = false; g.firstChild.focus();
+    }
+    function leaveEncounter(foe) {
+      // step the player back from the Octocat and pause encounters briefly so they can walk away
+      const fx = foe.tx * TS + TS / 2, fy = foe.ty * TS + TS / 2;
+      let ux = player.x - fx, uy = player.y - fy; const n = Math.hypot(ux, uy) || 1; ux /= n; uy /= n;
+      if (!ux && !uy) uy = 1;
+      for (let i = 0; i < 12; i++) { const nx = player.x + ux * 4, ny = player.y + uy * 4; if (blocked(nx, ny)) break; player.x = nx; player.y = ny; }
+      encounterCd = 2.5; scene = "world"; battle = null; pendingFoe = null;
+      $("pick").hidden = true; $("battleUI").hidden = true; cv.focus();
+    }
+    function startBattle(fighter, foe) {
+      scene = "battle"; $("pick").hidden = true; $("battleUI").hidden = false; $("toast").classList.remove("show"); toastT = 0;
+      battle = { fighter, foe, phase: "idle", t: 0, hit: false, msg: "A wild " + foe.name + " appeared! Go, " + fighter.name + "!" };
+      const m = moveOf(fighter.id);
+      $("fightBtn").textContent = "Use " + m.name + " (" + m.acc + "%)";
+      setBattleControls(true); $("battleMsg").textContent = battle.msg; $("fightBtn").focus();
+    }
+    function setBattleControls(on) { $("fightBtn").disabled = !on; }
+    function fight() {
+      if (scene !== "battle" || battle.phase !== "idle") return;
+      const m = moveOf(battle.fighter.id);
+      battle.hit = Math.random() * 100 < m.acc; battle.phase = "attack"; battle.t = 0;
+      battle.msg = battle.fighter.name + " used " + m.name + "!"; $("battleMsg").textContent = battle.msg;
+      setBattleControls(false);
+    }
+    function runAway() {
+      if (scene === "pick") leaveEncounter(pendingFoe);
+      else if (scene === "battle" && battle.phase !== "ko") leaveEncounter(battle.foe);
+    }
+    function updateBattle(dt) {
+      battle.t += dt;
+      if (battle.phase === "attack" && battle.t >= 0.8) {
+        battle.t = 0;
+        if (battle.hit) { battle.phase = "ko"; battle.msg = battle.foe.name + " fainted!"; }
+        else { battle.phase = "miss"; battle.msg = battle.foe.name + " dodged! Try again."; }
+        $("battleMsg").textContent = battle.msg;
+      } else if (battle.phase === "miss" && battle.t >= 0.9) {
+        battle.phase = "idle"; setBattleControls(true); $("fightBtn").focus();
+      } else if (battle.phase === "ko" && battle.t >= 1.4) {
+        const foe = battle.foe;
+        scene = "world"; battle = null; $("battleUI").hidden = true; cv.focus();
+        collect(foe);
+      }
+    }
+    function renderBattle() {
+      const c = ctx, b = battle, FX = 480, FY = 125, PX = 170, PY = 245;
+      const sky = c.createLinearGradient(0, 0, 0, 140); sky.addColorStop(0, "#4f9fe0"); sky.addColorStop(1, "#ffd9a0");
+      c.fillStyle = sky; c.fillRect(0, 0, VW, 140);
+      c.fillStyle = "#1f6fb2"; c.fillRect(0, 100, VW, 40);
+      c.strokeStyle = "#c0392b"; c.fillStyle = "#c0392b"; c.lineWidth = 3;      // Golden Gate in the distance
+      c.fillRect(250, 45, 8, 80); c.fillRect(420, 45, 8, 80); c.fillRect(100, 112, 520, 5);
+      c.beginPath(); c.moveTo(100, 112); c.quadraticCurveTo(175, 75, 254, 45); c.quadraticCurveTo(337, 105, 424, 45); c.quadraticCurveTo(510, 75, 620, 112); c.stroke();
+      const gr = c.createLinearGradient(0, 140, 0, VH); gr.addColorStop(0, "#58b45a"); gr.addColorStop(1, "#3f8f4a");
+      c.fillStyle = gr; c.fillRect(0, 140, VW, VH - 140);
+      c.fillStyle = "rgba(0,0,0,.22)";
+      c.beginPath(); c.ellipse(FX, FY + 52, 95, 22, 0, 0, 7); c.fill();
+      c.beginPath(); c.ellipse(PX, PY + 62, 110, 26, 0, 0, 7); c.fill();
+
+      let fx = FX, fy = FY, fa = 1, px = PX, py = PY;
+      if (b.phase === "attack") {
+        const p = Math.min(1, b.t / 0.8), l = Math.sin(p * Math.PI);
+        px += l * (FX - PX) * 0.7; py += l * (FY - PY) * 0.7;
+        if (b.hit && p > 0.5) fa = Math.sin(b.t * 50) > 0 ? 1 : 0.25;
+        if (!b.hit && p > 0.5) fx += Math.sin((p - 0.5) * Math.PI * 2) * 70;
+      }
+      if (b.phase === "ko") { fa = Math.max(0, 1 - b.t / 1.0); fy += b.t * 40; }
+      c.globalAlpha = fa; drawOctocat(c, fx, fy, 100, b.foe.color, time, images[b.foe.id]); c.globalAlpha = 1;
+      drawOctocat(c, px, py, 130, b.fighter.color, time, images[b.fighter.id]);
+      if (b.phase === "attack" && b.t / 0.8 > 0.45 && b.t / 0.8 < 0.85) {   // impact burst
+        c.save(); c.translate(fx, fy); c.rotate(b.t * 8); c.fillStyle = b.hit ? "#ffd33d" : "#8b949e"; c.beginPath();
+        for (let i = 0; i < 16; i++) { const r = i % 2 ? 22 : 46; c.lineTo(Math.cos(i * Math.PI / 8) * r, Math.sin(i * Math.PI / 8) * r); }
+        c.closePath(); c.fill(); c.restore();
+      }
+      const box = (x, y, w, h) => { c.fillStyle = "rgba(13,17,23,.9)"; c.strokeStyle = "#58a6ff"; c.lineWidth = 2; c.beginPath(); c.roundRect(x, y, w, h, 8); c.fill(); c.stroke(); };
+      c.textAlign = "left"; c.textBaseline = "alphabetic"; c.fillStyle = "#fff";
+      box(16, 16, 250, 62); c.fillStyle = "#fff"; c.font = "bold 16px system-ui"; c.fillText(b.foe.name, 28, 38);
+      c.font = "11px system-ui"; c.fillStyle = "#8b949e"; c.fillText("HP", 28, 60);
+      c.fillStyle = "#30363d"; c.fillRect(48, 52, 200, 10);
+      const hp = b.phase === "ko" ? Math.max(0, 1 - b.t / 0.5) : 1;
+      c.fillStyle = "#3fb950"; c.fillRect(48, 52, 200 * hp, 10);
+      c.fillStyle = "#8b949e"; c.fillText((b.phase === "ko" ? 0 : 1) + "/1", 222, 74);
+      box(374, 215, 250, 52); c.fillStyle = "#fff"; c.font = "bold 16px system-ui"; c.fillText(b.fighter.name, 386, 237);
+      c.font = "12px system-ui"; c.fillStyle = "#8b949e"; c.fillText("Move: " + moveOf(b.fighter.id).name, 386, 257);
     }
 
     /* ---------- Inventory ---------- */
     function updateCount() { $("count").textContent = collected.size; $("total").textContent = OCTOCATS.length; }
+    function makeCard(c, found, opts) {
+      const card = document.createElement("button");
+      card.type = "button"; card.className = "card " + (found ? "found" : "locked") + (opts.selected ? " selected" : "");
+      if (found) {
+        const cc = document.createElement("canvas"); cc.width = cc.height = 64;
+        drawOctocat(cc.getContext("2d"), 32, 30, 56, c.color, 0, images[c.id]); card.appendChild(cc);
+      } else { const q = document.createElement("span"); q.className = "q"; q.textContent = "?"; card.appendChild(q); }
+      const name = document.createElement("span"); name.textContent = found ? c.name : "Undiscovered"; card.appendChild(name);
+      if (found && opts.showMove) { const mv = document.createElement("span"); mv.className = "mv"; mv.textContent = moveOf(c.id).name; card.appendChild(mv); }
+      card.addEventListener("click", opts.onClick);
+      return card;
+    }
     function renderInventory() {
       const g = $("grid"); g.textContent = "";
       $("invCount").textContent = "(" + collected.size + "/" + OCTOCATS.length + ")";
       for (const c of OCTOCATS) {
         const found = collected.has(c.id);
-        const card = document.createElement("button");
-        card.type = "button"; card.className = "card " + (found ? "found" : "locked") + (selected === c.id ? " selected" : "");
-        if (found) {
-          const cc = document.createElement("canvas"); cc.width = cc.height = 64;
-          drawOctocat(cc.getContext("2d"), 32, 30, 56, c.color, 0, images[c.id]); card.appendChild(cc);
-        } else { const q = document.createElement("span"); q.className = "q"; q.textContent = "?"; card.appendChild(q); }
-        const name = document.createElement("span"); name.textContent = found ? c.name : "Undiscovered"; card.appendChild(name);
-        card.addEventListener("click", () => {
-          selected = c.id;
-          $("detail").textContent = found ? c.name + " - " + c.where : "Not found yet. Keep exploring Fort Mason!";
-          renderInventory();
-        });
-        g.appendChild(card);
+        g.appendChild(makeCard(c, found, {
+          showMove: true, selected: selected === c.id,
+          onClick: () => {
+            selected = c.id;
+            $("detail").textContent = found ? c.name + " - " + c.where + " Move: " + moveOf(c.id).name + " (" + moveOf(c.id).acc + "% accuracy)." : "Not found yet. Keep exploring Fort Mason!";
+            renderInventory();
+          }
+        }));
       }
     }
     function setInventory(open) {
+      if (scene !== "world") return;
       $("inv").hidden = !open;
       if (open) { keys = {}; renderInventory(); $("closeInv").focus(); } else cv.focus();
     }
     $("invBtn").addEventListener("click", () => setInventory($("inv").hidden));
     $("closeInv").addEventListener("click", () => setInventory(false));
+    $("fightBtn").addEventListener("click", fight);
+    $("runBtn").addEventListener("click", runAway);
+    $("pickRun").addEventListener("click", runAway);
     $("resetBtn").addEventListener("click", () => {
-      collected = new Set(); save(); selected = null; updateCount(); renderInventory();
+      collected = new Set(); rollMoves(); save(); selected = null; updateCount(); renderInventory();
       $("detail").textContent = "Progress reset. Go find them again!";
     });
 
@@ -302,6 +440,11 @@
     addEventListener("keydown", (e) => {
       const k = norm(e);
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (scene === "battle" || scene === "pick") {
+        if (k === "Escape") runAway();
+        else if (scene === "battle" && (k === "f" || k === "1")) fight();
+        return;
+      }
       if (k === "i") { setInventory($("inv").hidden); return; }
       if (k === "Escape" && !$("inv").hidden) { setInventory(false); return; }
       if (MOVE_KEYS.has(k) && $("inv").hidden) { keys[k] = true; e.preventDefault(); }
