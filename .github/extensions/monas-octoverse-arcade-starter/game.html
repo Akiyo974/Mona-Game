@@ -52,7 +52,7 @@
         <p class="eyebrow">Mona's Octoverse Arcade</p>
         <h1>Fort Mason Octodex</h1>
       </div>
-      <div><span class="count">Octocats: <span id="count">0</span>/<span id="total">0</span></span> <button id="invBtn" type="button" class="secondary">Inventory (I)</button></div>
+      <div><span class="count">Octocats: <span id="count">0</span>/<span id="total">0</span></span> <button id="invBtn" type="button" class="secondary">Inventory (I)</button> <button id="muteBtn" type="button" class="secondary">Music: On (M)</button></div>
     </div>
     <div class="stage">
       <canvas id="game" width="640" height="448" tabindex="0" aria-label="Fort Mason map"></canvas>
@@ -72,7 +72,7 @@
         <div><button id="resetBtn" type="button" class="secondary">Reset progress</button></div>
       </section>
     </div>
-    <p class="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (or arrow keys). Walk into an Octocat to collect it. <kbd>I</kbd> opens the inventory.</p>
+    <p class="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (or arrow keys). Walk into an Octocat to collect it. <kbd>I</kbd> opens the inventory, <kbd>M</kbd> toggles music (it starts on your first key press or click).</p>
   </main>
   <script>
     // Drop in your own art here: paths/URLs relative to this page. Leave null to use the built-in placeholders.
@@ -232,6 +232,158 @@
       }
     }
 
+    /* ---------- Music: 8-bit chiptune synth (Web Audio, no audio files) ---------- */
+    const Music = (() => {
+      let ac = null, master = null, analyser = null, noiseBuf = null, muted = false, wanted = "world", cur = null;
+      const waves = {}, mtof = (n) => 440 * Math.pow(2, (n - 69) / 12);
+      const LEN = 128; // 8 bars of 16 steps
+
+      function init() {
+        if (ac) return;
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        const comp = ac.createDynamicsCompressor(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.5;
+        analyser = ac.createAnalyser(); analyser.fftSize = 1024;
+        master.connect(comp); comp.connect(analyser); comp.connect(ac.destination);
+        noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+        const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      function pulse(duty) {
+        if (!waves[duty]) {
+          const N = 32, re = new Float32Array(N), im = new Float32Array(N);
+          for (let n = 1; n < N; n++) re[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * duty);
+          waves[duty] = ac.createPeriodicWave(re, im);
+        }
+        return waves[duty];
+      }
+      function tone(bus, type, freq, t, dur, vol, o = {}) {
+        const osc = ac.createOscillator(), g = ac.createGain();
+        if (typeof type === "number") osc.setPeriodicWave(pulse(type)); else osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+        if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.006);
+        if (o.sus) g.gain.setValueAtTime(vol, t + dur * 0.7);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(g); g.connect(bus); osc.start(t); osc.stop(t + dur + 0.02);
+      }
+      function noise(bus, t, dur, vol, ftype, freq) {
+        const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        src.buffer = noiseBuf; f.type = ftype; f.frequency.value = freq;
+        g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(f); f.connect(g); g.connect(bus); src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.02);
+      }
+      const kick = (b, t, v) => tone(b, "triangle", 160, t, 0.16, v, { to: 40 });
+      const snare = (b, t, v) => { noise(b, t, 0.13, v, "bandpass", 1800); tone(b, "triangle", 230, t, 0.08, v * 0.7, { to: 110 }); };
+      const hat = (b, t, v, open) => noise(b, t, open ? 0.1 : 0.03, v, "highpass", 7000);
+
+      // Relaxed house, ~118 BPM: F  Em  Dm  Am | F  Em  Dm  G7
+      const W_CH = [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [57, 60, 64, 67], [53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [55, 59, 62, 65]];
+      const W_ROOT = [41, 40, 38, 33, 41, 40, 38, 43];
+      const W_MEL = [
+        [[0, 76, 3], [4, 72, 2], [6, 77, 2], [8, 76, 4], [12, 72, 4]],
+        [[0, 76, 2], [2, 79, 2], [4, 76, 4], [8, 74, 2], [10, 71, 2], [12, 67, 4]],
+        [[0, 74, 3], [4, 72, 2], [6, 69, 2], [8, 74, 4], [12, 77, 2], [14, 76, 2]],
+        [[0, 72, 4], [4, 76, 2], [6, 79, 2], [8, 81, 6], [14, 79, 2]],
+        [[0, 77, 3], [4, 76, 2], [6, 72, 2], [8, 69, 4], [12, 72, 4]],
+        [[0, 71, 2], [2, 74, 2], [4, 76, 4], [8, 79, 4], [12, 76, 2], [14, 74, 2]],
+        [[0, 74, 2], [2, 77, 2], [4, 81, 4], [8, 77, 2], [10, 74, 2], [12, 72, 4]],
+        [[0, 71, 2], [2, 74, 2], [4, 77, 2], [6, 74, 2], [8, 71, 6], [14, 67, 2]]
+      ];
+      function playWorld(s, t, d, bus) {
+        const bar = s >> 4, st = s & 15, ch = W_CH[bar], ro = W_ROOT[bar];
+        if (st % 4 === 0) kick(bus, t, 0.55);
+        if (st % 4 === 2) hat(bus, t, 0.11, true);
+        if (st % 2 === 1) hat(bus, t, 0.035, false);
+        if (st === 4 || st === 12) snare(bus, t, 0.13);
+        if (st === 2 || st === 6 || st === 10) tone(bus, 0.25, mtof(ro + 12), t, d * 1.8, 0.14);
+        if (st === 14) tone(bus, 0.25, mtof(ro + 19), t, d * 1.8, 0.12);
+        if (st === 3 || st === 6 || st === 11) for (const n of ch) tone(bus, 0.125, mtof(n + 12), t, d * 1.5, 0.03);
+        tone(bus, 0.25, mtof(ch[st % 4] + 12), t, d * 0.9, 0.028);
+        for (const [at, n, len] of W_MEL[bar]) if (at === st) {
+          tone(bus, 0.25, mtof(n), t, len * d, 0.07, { sus: 1 });
+          tone(bus, 0.25, mtof(n), t + 3 * d, len * d, 0.026, { sus: 1 }); // echo
+        }
+      }
+
+      // Intense battle, ~168 BPM: Am  Am  F  G | Am  Am  F  E
+      const B_CH = [[57, 60, 64, 69], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67], [57, 60, 64, 69], [57, 60, 64, 69], [53, 57, 60, 65], [52, 56, 59, 64]];
+      const B_ROOT = [45, 45, 41, 43, 45, 45, 41, 40];
+      const B_PAT = [0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 12, 0, 12];
+      const B_MEL = [
+        [[0, 81, 3], [3, 79, 1], [4, 76, 2], [6, 79, 2], [8, 81, 4], [12, 83, 2], [14, 84, 2]],
+        [[0, 81, 6], [6, 79, 2], [8, 76, 4], [12, 72, 2], [14, 76, 2]],
+        [[0, 77, 3], [3, 76, 1], [4, 72, 2], [6, 77, 2], [8, 81, 4], [12, 79, 2], [14, 77, 2]],
+        [[0, 79, 3], [3, 77, 1], [4, 74, 2], [6, 79, 2], [8, 83, 4], [12, 81, 2], [14, 79, 2]],
+        [[0, 81, 2], [2, 84, 2], [4, 83, 2], [6, 81, 2], [8, 79, 2], [10, 81, 2], [12, 76, 4]],
+        [[0, 84, 3], [3, 83, 1], [4, 81, 4], [8, 76, 2], [10, 79, 2], [12, 81, 4]],
+        [[0, 84, 2], [2, 81, 2], [4, 77, 2], [6, 81, 2], [8, 84, 4], [12, 86, 4]],
+        [[0, 83, 2], [2, 80, 2], [4, 83, 2], [6, 80, 2], [8, 76, 2], [10, 80, 2], [12, 83, 4]]
+      ];
+      function playBattle(s, t, d, bus) {
+        const bar = s >> 4, st = s & 15, ch = B_CH[bar], ro = B_ROOT[bar];
+        if (st === 0 || st === 4 || st === 8 || st === 10 || st === 12) kick(bus, t, 0.6);
+        if (st === 4 || st === 12 || (bar === 7 && st >= 12)) snare(bus, t, 0.17);
+        if (st % 2 === 0) hat(bus, t, 0.06, false);
+        if (st === 14) hat(bus, t, 0.09, true);
+        tone(bus, 0.5, mtof(ro + B_PAT[st]), t, d * 0.9, 0.13);
+        const arp = ch.concat(ch.map((n) => n + 12));
+        tone(bus, 0.125, mtof(arp[st % 8] + 12), t, d * 0.8, 0.04);
+        for (const [at, n, len] of B_MEL[bar]) if (at === st) {
+          tone(bus, 0.25, mtof(n), t, len * d, 0.085, { sus: 1 });
+          tone(bus, 0.5, mtof(n - 12), t, len * d, 0.03, { sus: 1 });
+        }
+      }
+      const TRACKS = { world: { bpm: 118, play: playWorld }, battle: { bpm: 168, play: playBattle } };
+
+      function tick(inst) {
+        while (inst.nextT < ac.currentTime + 0.2) {
+          inst.tr.play(inst.step % LEN, inst.nextT, inst.d, inst.bus);
+          inst.step++; inst.nextT += inst.d;
+        }
+      }
+      function stopInst(inst) {
+        if (!inst) return;
+        clearInterval(inst.timer);
+        inst.bus.gain.cancelScheduledValues(ac.currentTime); inst.bus.gain.setValueAtTime(inst.bus.gain.value, ac.currentTime);
+        inst.bus.gain.linearRampToValueAtTime(0, ac.currentTime + 0.35);
+        setTimeout(() => inst.bus.disconnect(), 700);
+      }
+      function startInst(name) {
+        const tr = TRACKS[name], bus = ac.createGain();
+        bus.gain.setValueAtTime(0, ac.currentTime); bus.gain.linearRampToValueAtTime(1, ac.currentTime + 0.4); bus.connect(master);
+        const inst = { name, tr, bus, step: 0, nextT: ac.currentTime + 0.08, d: 60 / tr.bpm / 4 };
+        inst.timer = setInterval(() => tick(inst), 40); tick(inst); cur = inst;
+      }
+      function play(name) {
+        wanted = name;
+        if (!ac || ac.state !== "running") return;
+        if (cur && cur.name === name) return;
+        stopInst(cur); cur = null;
+        if (name) startInst(name);
+      }
+      function unlock() {
+        init();
+        const go = () => play(wanted);
+        if (ac.state === "running") go(); else ac.resume().then(go).catch(() => {});
+      }
+      function sfx(name) {
+        if (!ac || ac.state !== "running") return;
+        const t = ac.currentTime + 0.01;
+        if (name === "hit") { noise(master, t, 0.2, 0.3, "bandpass", 900); tone(master, "square", 700, t, 0.25, 0.18, { to: 90 }); }
+        else if (name === "miss") tone(master, "triangle", 320, t, 0.3, 0.25, { to: 110 });
+        else if (name === "collect") [72, 76, 79, 84].forEach((n, i) => tone(master, 0.25, mtof(n), t + i * 0.07, 0.18, 0.12));
+        else if (name === "win") [[72, 0], [72, 0.11], [72, 0.22], [76, 0.33], [79, 0.5], [84, 0.7]].forEach(([n, o]) => { tone(master, 0.25, mtof(n), t + o, 0.28, 0.12); tone(master, 0.5, mtof(n - 12), t + o, 0.28, 0.07); });
+      }
+      function toggleMute() {
+        muted = !muted;
+        if (master) master.gain.setTargetAtTime(muted ? 0 : 0.5, ac.currentTime, 0.04);
+        $("muteBtn").textContent = muted ? "Music: Off (M)" : "Music: On (M)";
+      }
+      function peak() { const a = new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(a); return Math.max(...a.map(Math.abs)); }
+      return { play, unlock, sfx, toggleMute, peak, get info() { return { ctx: ac && ac.state, track: cur && cur.name, step: cur && cur.step, muted }; } };
+    })();
+    $("muteBtn").addEventListener("click", () => { Music.unlock(); Music.toggleMute(); });
+    for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => Music.unlock(), { capture: true });
+
     /* ---------- Movement & collection ---------- */
     function blocked(px, py) {
       const x0 = Math.floor((px - player.w / 2) / TS), x1 = Math.floor((px + player.w / 2 - 0.01) / TS);
@@ -260,7 +412,7 @@
       else for (const c of OCTOCATS) {
         if (collected.has(c.id)) continue;
         if (Math.hypot(player.x - (c.tx * TS + TS / 2), (player.y - 8) - (c.ty * TS + TS / 2)) < 22) {
-          if (collected.size === 0) collect(c); // the first Octocat is free
+          if (collected.size === 0) { collect(c); Music.sfx("collect"); } // the first Octocat is free
           else startPick(c);
           break;
         }
@@ -306,14 +458,14 @@
       if (!ux && !uy) uy = 1;
       for (let i = 0; i < 12; i++) { const nx = player.x + ux * 4, ny = player.y + uy * 4; if (blocked(nx, ny)) break; player.x = nx; player.y = ny; }
       encounterCd = 2.5; scene = "world"; battle = null; pendingFoe = null;
-      $("pick").hidden = true; $("battleUI").hidden = true; cv.focus();
+      $("pick").hidden = true; $("battleUI").hidden = true; cv.focus(); Music.play("world");
     }
     function startBattle(fighter, foe) {
       scene = "battle"; $("pick").hidden = true; $("battleUI").hidden = false; $("toast").classList.remove("show"); toastT = 0;
       battle = { fighter, foe, phase: "idle", t: 0, hit: false, msg: "A wild " + foe.name + " appeared! Go, " + fighter.name + "!" };
       const m = moveOf(fighter.id);
       $("fightBtn").textContent = "Use " + m.name + " (" + m.acc + "%)";
-      setBattleControls(true); $("battleMsg").textContent = battle.msg; $("fightBtn").focus();
+      setBattleControls(true); $("battleMsg").textContent = battle.msg; $("fightBtn").focus(); Music.play("battle");
     }
     function setBattleControls(on) { $("fightBtn").disabled = !on; }
     function fight() {
@@ -322,6 +474,7 @@
       battle.hit = Math.random() * 100 < m.acc; battle.phase = "attack"; battle.t = 0;
       battle.msg = battle.fighter.name + " used " + m.name + "!"; $("battleMsg").textContent = battle.msg;
       setBattleControls(false);
+      const hit = battle.hit; setTimeout(() => Music.sfx(hit ? "hit" : "miss"), 380);
     }
     function runAway() {
       if (scene === "pick") leaveEncounter(pendingFoe);
@@ -331,14 +484,14 @@
       battle.t += dt;
       if (battle.phase === "attack" && battle.t >= 0.8) {
         battle.t = 0;
-        if (battle.hit) { battle.phase = "ko"; battle.msg = battle.foe.name + " fainted!"; }
+        if (battle.hit) { battle.phase = "ko"; battle.msg = battle.foe.name + " fainted!"; Music.play(null); Music.sfx("win"); }
         else { battle.phase = "miss"; battle.msg = battle.foe.name + " dodged! Try again."; }
         $("battleMsg").textContent = battle.msg;
       } else if (battle.phase === "miss" && battle.t >= 0.9) {
         battle.phase = "idle"; setBattleControls(true); $("fightBtn").focus();
       } else if (battle.phase === "ko" && battle.t >= 1.4) {
         const foe = battle.foe;
-        scene = "world"; battle = null; $("battleUI").hidden = true; cv.focus();
+        scene = "world"; battle = null; $("battleUI").hidden = true; cv.focus(); Music.play("world");
         collect(foe);
       }
     }
@@ -433,6 +586,7 @@
     addEventListener("keydown", (e) => {
       const k = norm(e);
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (k === "m") { Music.toggleMute(); return; }
       if (scene === "battle" || scene === "pick") {
         if (k === "Escape") runAway();
         else if (scene === "battle" && (k === "f" || k === "1")) fight();
