@@ -3,177 +3,315 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mona's Octoverse Arcade</title>
+  <title>Mona's Octoverse Arcade - Fort Mason Octodex</title>
   <link rel="icon" href="data:,">
   <style>
     :root { color-scheme: dark; font: 16px/1.5 system-ui, sans-serif; background: #0d1117; color: #e6edf3; }
     * { box-sizing: border-box; }
-    body { display: grid; min-height: 100vh; margin: 0; place-items: center; padding: 1rem; }
-    main { width: min(100%, 36rem); padding: 1rem; background: #161b22; border: 1px solid #30363d; border-radius: 1rem; }
-    .eyebrow { margin: 0; color: #3fb950; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-    h1 { margin: 0.2rem 0 0.5rem; font-size: clamp(1.3rem, 5vw, 1.8rem); line-height: 1.1; }
-    .hud { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-weight: 700; }
+    body { display: grid; min-height: 100vh; margin: 0; place-items: center; padding: 0.75rem; }
+    main { width: min(100%, 44rem); padding: 0.75rem; background: #161b22; border: 1px solid #30363d; border-radius: 1rem; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .eyebrow { margin: 0; color: #3fb950; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(1.1rem, 4vw, 1.5rem); line-height: 1.2; }
+    .count { font-weight: 700; white-space: nowrap; }
     .stage { position: relative; }
-    canvas { display: block; width: 100%; height: auto; background: #0d1117; border: 1px solid #30363d; border-radius: 0.5rem; touch-action: none; }
-    .overlay { position: absolute; inset: 0; display: grid; place-content: center; gap: 0.5rem; padding: 1rem; text-align: center; background: rgba(13,17,23,.85); border-radius: 0.5rem; }
+    canvas#game { display: block; width: 100%; height: auto; background: #0d1117; border: 2px solid #30363d; border-radius: 0.5rem; image-rendering: pixelated; }
+    #toast { position: absolute; left: 50%; bottom: 0.75rem; max-width: 90%; padding: 0.4rem 0.9rem; transform: translateX(-50%); color: #fff; font-weight: 700; text-align: center; background: rgba(35,134,54,.95); border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity .25s; }
+    #toast.show { opacity: 1; }
+    .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; overflow: auto; background: rgba(13,17,23,.95); border-radius: 0.5rem; }
     .overlay[hidden] { display: none; }
-    .overlay h2 { margin: 0; font-size: 1.6rem; }
-    .overlay p { margin: 0; color: #c9d1d9; }
-    button { justify-self: center; padding: 0.7rem 1.2rem; color: #fff; font: inherit; font-weight: 700; background: #238636; border: 0; border-radius: 0.5rem; cursor: pointer; }
+    .overlay header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .overlay h2 { margin: 0; font-size: 1.2rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: 0.5rem; }
+    .card { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 0.4rem; color: inherit; font: inherit; font-size: 0.75rem; text-align: center; background: #161b22; border: 2px solid #30363d; border-radius: 0.5rem; cursor: pointer; }
+    .card.found { border-color: #3fb950; }
+    .card.locked { opacity: .55; }
+    .card.selected { box-shadow: 0 0 0 2px #58a6ff; }
+    .card canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+    .card .q { display: grid; width: 64px; height: 64px; place-items: center; color: #6e7681; font-size: 2rem; font-weight: 700; }
+    #detail { min-height: 3rem; margin: 0; padding: 0.5rem 0.75rem; color: #c9d1d9; font-size: 0.9rem; background: #161b22; border: 1px solid #30363d; border-radius: 0.5rem; }
+    button { padding: 0.45rem 0.9rem; color: #fff; font: inherit; font-size: 0.9rem; font-weight: 700; background: #238636; border: 0; border-radius: 0.5rem; cursor: pointer; }
     button:hover { background: #1a7f37; }
-    button:focus-visible { outline: 3px solid #58a6ff; outline-offset: 3px; }
-    .sidekick { display: flex; gap: 0.6rem; align-items: center; min-height: 3.2rem; margin-top: 0.6rem; padding: 0.5rem 0.75rem; background: #0d1117; border: 1px solid #30363d; border-radius: 0.5rem; }
-    .sidekick .icon { font-size: 1.5rem; }
-    .sidekick p { margin: 0; color: #c9d1d9; font-size: 0.9rem; }
-    .sidekick.pop { border-color: #58a6ff; box-shadow: 0 0 0 2px rgba(88,166,255,.35); }
+    button.secondary { background: #30363d; }
+    button.secondary:hover { background: #3d444d; }
+    button:focus-visible, .card:focus-visible { outline: 3px solid #58a6ff; outline-offset: 2px; }
     .help { margin: 0.5rem 0 0; color: #8b949e; font-size: 0.8rem; }
+    kbd { padding: 0 0.3rem; background: #0d1117; border: 1px solid #30363d; border-radius: 0.25rem; font-size: 0.75rem; }
   </style>
 </head>
 <body>
   <main>
-    <p class="eyebrow">Mona's Octoverse Arcade</p>
-    <h1>Commit Collector</h1>
-    <div class="hud"><span>Score: <span id="score">0</span></span><span>Best: <span id="best">0</span></span><span>Speed: <span id="speed">1.0</span>x</span></div>
-    <div class="stage">
-      <canvas id="c" width="480" height="480" aria-label="Game board"></canvas>
-      <div class="overlay" id="start">
-        <h2>Help Mona commit!</h2>
-        <p>Collect green commit squares, dodge red bugs.</p>
-        <button id="play" type="button">Start game</button>
+    <div class="top">
+      <div>
+        <p class="eyebrow">Mona's Octoverse Arcade</p>
+        <h1>Fort Mason Octodex</h1>
       </div>
-      <div class="overlay" id="over" hidden>
-        <h2>Game over</h2>
-        <p>A bug merged into main! Final score: <strong id="final">0</strong></p>
-        <button id="restart" type="button">Restart</button>
-      </div>
+      <div><span class="count">Octocats: <span id="count">0</span>/<span id="total">0</span></span> <button id="invBtn" type="button" class="secondary">Inventory (I)</button></div>
     </div>
-    <div class="sidekick" id="sidekick"><span class="icon" aria-hidden="true">🤖</span><p id="tip" role="status" aria-live="polite">Copilot sidekick: I'll cheer you on every 10 points!</p></div>
-    <p class="help">Move Mona with arrow keys / WASD, or drag on the board.</p>
+    <div class="stage">
+      <canvas id="game" width="640" height="448" tabindex="0" aria-label="Fort Mason map"></canvas>
+      <div id="toast" role="status" aria-live="polite"></div>
+      <section class="overlay" id="inv" hidden aria-label="Inventory">
+        <header><h2>Octodex <span id="invCount"></span></h2><button id="closeInv" type="button">Close (I)</button></header>
+        <div class="grid" id="grid"></div>
+        <p id="detail">Select an Octocat to see where you found it.</p>
+        <div><button id="resetBtn" type="button" class="secondary">Reset progress</button></div>
+      </section>
+    </div>
+    <p class="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (or arrow keys). Walk into an Octocat to collect it. <kbd>I</kbd> opens the inventory.</p>
   </main>
   <script>
-    const cv = document.getElementById("c"), ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
-    const $ = (id) => document.getElementById(id);
-    const TIPS = [
-      "Nice commit! Small, focused changes are easier to review.",
-      "Great flow! Write commit messages your future self will thank you for.",
-      "You're on a roll! Tests first, then ship with confidence.",
-      "Awesome! Reviewing your own diff catches bugs early.",
-      "Keep going! Break big problems into tiny steps.",
-      "Brilliant! Ask me to explain code you don't understand.",
-      "Superb dodging! Bugs hate good error handling.",
-      "Legendary! Refactor a little every time you touch code."
-    ];
-    let best = 0, state = "ready", mona, items = [], score = 0, speed = 1, spawnT = 0, lastT = 0, startTime = 0, nextTip = 10, tipCount = 0, keys = {}, target = null;
+    // Drop in your own art here: paths/URLs relative to this page. Leave null to use the built-in placeholders.
+    const ASSETS = {
+      player: null,
+      octocats: {} // e.g. { octocat: "assets/octocat.png" }
+    };
 
-    function reset() {
-      mona = { x: W / 2, y: H - 50, r: 18 };
-      items = []; score = 0; speed = 1; spawnT = 0; nextTip = 10; tipCount = 0; target = null;
-      $("tip").textContent = "Copilot sidekick: I'll cheer you on every 10 points!";
-      hud();
-    }
-    function hud() { $("score").textContent = score; $("best").textContent = best; $("speed").textContent = speed.toFixed(1); }
-    function begin() {
-      reset(); state = "playing"; startTime = lastT = performance.now();
-      $("start").hidden = true; $("over").hidden = true;
-      requestAnimationFrame(loop);
-    }
-    function spawn() {
-      const bug = Math.random() < Math.min(0.55, 0.35 + score * 0.004);
-      const s = bug ? 30 : 26;
-      items.push({ bug, s, x: s / 2 + Math.random() * (W - s), y: -s, vy: 90 + Math.random() * 50 });
-    }
-    function sidekick() {
-      $("tip").textContent = "Copilot sidekick (" + score + " pts): " + TIPS[tipCount++ % TIPS.length];
-      const el = $("sidekick");
-      el.classList.add("pop"); setTimeout(() => el.classList.remove("pop"), 900);
-    }
-    function addScore(n) {
-      score += n;
-      while (score >= nextTip) { nextTip += 10; sidekick(); }
-      best = Math.max(best, score);
-    }
-    function update(dt, now) {
-      speed = 1 + score * 0.04 + (now - startTime) / 30000;
-      const v = 260 * (0.8 + 0.2 * speed);
-      let dx = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
-      let dy = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0);
-      if (target) {
-        const tx = target.x - mona.x, ty = target.y - mona.y, d = Math.hypot(tx, ty);
-        if (d > 4) { dx = tx / d; dy = ty / d; }
+    const TS = 32, MW = 48, MH = 34, VW = 640, VH = 448, STORE = "fort-mason-octodex-v1";
+    const cv = document.getElementById("game"), ctx = cv.getContext("2d");
+    const $ = (id) => document.getElementById(id);
+
+    /* ---------- Map: a stylised Fort Mason, San Francisco ---------- */
+    const SOLID = new Set(["~", "B", "T"]);
+    const grid = Array.from({ length: MH }, () => Array(MW).fill("."));
+    function rect(x, y, w, h, ch) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (grid[j] && i >= 0 && i < MW) grid[j][i] = ch; }
+
+    const OCTOCATS = [
+      { id: "octocat",     name: "Octocat",       tx: 7,  ty: 2,  color: "#6e5494", where: "Out on Pier 1, at the edge of the bay." },
+      { id: "mona",        name: "Mona",          tx: 19, ty: 2,  color: "#3fb950", where: "At the tip of Pier 2." },
+      { id: "dinotocat",   name: "Dinotocat",     tx: 31, ty: 7,  color: "#7ee787", where: "Hiding behind the Pier 3 shed." },
+      { id: "daftpunkcat", name: "Daftpunkcat",   tx: 2,  ty: 12, color: "#d2a8ff", where: "Next to Laguna Street, by Fort Mason Center." },
+      { id: "jetpacktocat",name: "Jetpacktocat",  tx: 12, ty: 16, color: "#58a6ff", where: "On the west side of the Great Meadow." },
+      { id: "spidertocat", name: "Spidertocat",   tx: 35, ty: 16, color: "#f85149", where: "East of the Great Meadow paths." },
+      { id: "scottocat",   name: "Scottocat",     tx: 6,  ty: 21, color: "#ffa657", where: "Under the trees on Fort Mason hill." },
+      { id: "heisencat",   name: "Heisencat",     tx: 40, ty: 21, color: "#e3b341", where: "Along the eastern lawn above Gashouse Cove." },
+      { id: "privateer",   name: "Privateer",     tx: 15, ty: 29, color: "#79c0ff", where: "Deep in the southern grove." },
+      { id: "nyantocat",   name: "Nyantocat",     tx: 30, ty: 30, color: "#ff7b72", where: "Near the south hillside." },
+      { id: "chellocat",   name: "Chellocat",     tx: 41, ty: 9,  color: "#56d364", where: "On the bay promenade near the Marina." },
+      { id: "defunktocat", name: "Defunktocat",   tx: 23, ty: 25, color: "#a371f7", where: "At the south end of the Great Meadow path." }
+    ];
+    const SPAWN = { tx: 23, ty: 9 };
+
+    function buildMap() {
+      rect(0, 0, MW, 8, "~");                       // San Francisco Bay
+      for (const px of [5, 17, 29]) {               // Piers 1-3
+        rect(px, 2, 6, 6, "P");
+        rect(px + 1, 3, 4, 3, "B");                 // pier sheds
       }
-      const n = Math.max(1, Math.hypot(dx, dy));
-      mona.x = Math.min(W - mona.r, Math.max(mona.r, mona.x + dx / n * v * dt));
-      mona.y = Math.min(H - mona.r, Math.max(mona.r, mona.y + dy / n * v * dt));
-      spawnT -= dt;
-      if (spawnT <= 0) { spawn(); spawnT = Math.max(0.25, 0.8 / speed); }
-      for (const it of items) it.y += it.vy * speed * dt;
-      for (const it of items) {
-        const lim = mona.r * 0.8 + it.s / 2;
-        if (Math.abs(mona.x - it.x) < lim && Math.abs(mona.y - it.y) < lim) {
-          if (it.bug) return gameOver();
-          it.hit = true;
-          addScore(1);
-        }
+      rect(0, 8, MW, 2, "=");                       // bay promenade
+      rect(42, 8, 6, 14, "~");                      // Gashouse Cove
+      rect(40, 15, 5, 1, "P");                      // dock
+      rect(0, 10, 2, 24, "#");                      // Laguna Street
+      rect(3, 11, 8, 3, "B"); rect(13, 11, 5, 3, "B");   // Fort Mason Center
+      rect(30, 11, 6, 3, "B"); rect(37, 11, 3, 3, "B");  // Herbst Pavilion & friends
+      rect(23, 10, 2, 17, "=");                     // Great Meadow N-S path
+      rect(2, 20, 40, 1, "=");                      // E-W path
+      for (let i = 0; i < 9; i++) { grid[15 + i][14 + i] = "="; grid[15 + i][33 - i] = "="; } // diagonals
+      // Fort Mason hill / grove: deterministic scatter of trees clear of paths and Octocats
+      let seed = 1337;
+      const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+      for (let y = 22; y < MH; y++) for (let x = 2; x < 46; x++) {
+        const nearCat = OCTOCATS.some((c) => Math.abs(c.tx - x) <= 1 && Math.abs(c.ty - y) <= 1);
+        if (grid[y][x] === "." && !nearCat && rnd() < 0.14) grid[y][x] = "T";
       }
-      items = items.filter((it) => !it.hit && it.y < H + 40);
-      hud();
+      rect(0, MH - 1, MW, 1, "T");
     }
-    function gameOver() {
-      state = "over"; best = Math.max(best, score); hud();
-      $("final").textContent = score; $("over").hidden = false; $("restart").focus();
-    }
-    function drawMona(x, y, r) {
-      ctx.fillStyle = "#30363d"; ctx.strokeStyle = "#e6edf3"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(x - r, y - r * 0.2); ctx.lineTo(x - r * 0.9, y - r * 1.2); ctx.lineTo(x - r * 0.3, y - r * 0.8);
-      ctx.lineTo(x + r * 0.3, y - r * 0.8); ctx.lineTo(x + r * 0.9, y - r * 1.2); ctx.lineTo(x + r, y - r * 0.2);
-      ctx.arc(x, y + r * 0.1, r, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "#e6edf3";
-      ctx.beginPath(); ctx.arc(x - r * 0.38, y - r * 0.1, r * 0.2, 0, 7); ctx.arc(x + r * 0.38, y - r * 0.1, r * 0.2, 0, 7); ctx.fill();
-      ctx.fillStyle = "#0d1117";
-      ctx.beginPath(); ctx.arc(x - r * 0.38, y - r * 0.1, r * 0.09, 0, 7); ctx.arc(x + r * 0.38, y - r * 0.1, r * 0.09, 0, 7); ctx.fill();
-      ctx.strokeStyle = "#e6edf3"; ctx.beginPath();
-      for (const o of [-0.5, 0, 0.5]) { ctx.moveTo(x + r * o, y + r); ctx.lineTo(x + r * o * 1.2, y + r * 1.5); }
-      ctx.stroke();
-    }
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.strokeStyle = "#161b22"; ctx.lineWidth = 1;
-      for (let i = 0; i < W; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke(); }
-      for (const it of items) {
-        const x = it.x - it.s / 2, y = it.y - it.s / 2;
-        if (it.bug) {
-          ctx.fillStyle = "#f85149"; ctx.fillRect(x, y, it.s, it.s);
-          ctx.font = "18px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🐞", it.x, it.y + 1);
+    buildMap();
+
+    const solidAt = (tx, ty) => tx < 0 || ty < 0 || tx >= MW || ty >= MH || SOLID.has(grid[ty][tx]);
+    const hash = (x, y, n) => { let h = (x * 374761393 + y * 668265263 + n * 2147483647) >>> 0; h = (h ^ (h >>> 13)) * 1274126177 >>> 0; return (h ^ (h >>> 16)) / 4294967296; };
+
+    /* ---------- Static map layer (drawn once) ---------- */
+    const mapCv = document.createElement("canvas"); mapCv.width = MW * TS; mapCv.height = MH * TS;
+    function renderMap() {
+      const m = mapCv.getContext("2d");
+      for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+        const t = grid[y][x], px = x * TS, py = y * TS, r = hash(x, y, 1);
+        if (t === "~") {
+          m.fillStyle = r < 0.5 ? "#1f6fb2" : "#1b66a6"; m.fillRect(px, py, TS, TS);
+          m.strokeStyle = "rgba(255,255,255,.25)"; m.lineWidth = 2; m.beginPath();
+          m.moveTo(px + 4, py + 10 + r * 10); m.quadraticCurveTo(px + 10, py + 5 + r * 10, px + 16, py + 10 + r * 10); m.quadraticCurveTo(px + 22, py + 15 + r * 10, px + 28, py + 10 + r * 10); m.stroke();
+        } else if (t === "P") {
+          m.fillStyle = "#a9794b"; m.fillRect(px, py, TS, TS);
+          m.strokeStyle = "#7a5230"; m.lineWidth = 1;
+          for (let k = 0; k < TS; k += 8) { m.beginPath(); m.moveTo(px, py + k + .5); m.lineTo(px + TS, py + k + .5); m.stroke(); }
+        } else if (t === "=") {
+          m.fillStyle = "#d9c58f"; m.fillRect(px, py, TS, TS);
+          m.fillStyle = "rgba(120,100,50,.25)"; m.fillRect(px + r * 24, py + hash(x, y, 2) * 24, 4, 3);
+        } else if (t === "#") {
+          m.fillStyle = "#5b6068"; m.fillRect(px, py, TS, TS);
+          if (x === 0 && y % 2 === 0) { m.fillStyle = "#e3b341"; m.fillRect(px + 14, py + 4, 4, 18); }
         } else {
-          ctx.fillStyle = "#39d353"; ctx.fillRect(x, y, it.s, it.s);
-          ctx.strokeStyle = "#7ee787"; ctx.lineWidth = 2; ctx.strokeRect(x, y, it.s, it.s);
+          m.fillStyle = y > 21 ? "#3f8f4a" : "#58b45a"; m.fillRect(px, py, TS, TS); // hill is slightly darker
+          m.fillStyle = "rgba(255,255,255,.12)";
+          for (let k = 0; k < 3; k++) m.fillRect(px + hash(x, y, 10 + k) * 28, py + hash(x, y, 20 + k) * 28, 2, 4);
+          if (t === "T") {
+            m.fillStyle = "#6b4423"; m.fillRect(px + 13, py + 18, 6, 12);
+            m.fillStyle = "#1f6f35"; m.beginPath(); m.arc(px + 16, py + 14, 13, 0, 7); m.fill();
+            m.fillStyle = "#2f8f46"; m.beginPath(); m.arc(px + 12, py + 11, 6, 0, 7); m.fill();
+          }
+        }
+        if (t === "B") {
+          const shed = x >= 5 && y < 8 && (x < 11 || (x >= 17 && x < 23) || x >= 29);
+          m.fillStyle = shed ? "#8b949e" : "#c0583f"; m.fillRect(px, py, TS, TS);
+          m.fillStyle = shed ? "#6e7681" : "#8e3a28"; m.fillRect(px, py, TS, 6);
+          m.fillStyle = "rgba(0,0,0,.25)"; m.fillRect(px + 6, py + 14, 8, 10); m.fillRect(px + 18, py + 14, 8, 10);
         }
       }
-      drawMona(mona.x, mona.y, mona.r);
+      m.font = "bold 13px system-ui"; m.textAlign = "center"; m.textBaseline = "middle";
+      const label = (s, x, y, c) => { m.lineWidth = 3; m.strokeStyle = "rgba(0,0,0,.65)"; m.strokeText(s, x * TS, y * TS); m.fillStyle = c || "#fff"; m.fillText(s, x * TS, y * TS); };
+      label("SAN FRANCISCO BAY", 24, 0.8, "#cfe8ff");
+      label("Pier 1", 8, 6.8); label("Pier 2", 20, 6.8); label("Pier 3", 32, 6.8);
+      label("Fort Mason Center", 7, 12.5); label("Herbst Pavilion", 33, 12.5);
+      label("Great Meadow", 24, 18.2); label("Gashouse Cove", 45, 11); label("Fort Mason Hill", 24, 27.2);
+      m.save(); m.translate(0.5 * TS + 6, 22 * TS); m.rotate(-Math.PI / 2); label("Laguna St", 0, 0); m.restore();
+    }
+    renderMap();
+
+    /* ---------- State ---------- */
+    let collected = new Set(), keys = {}, last = 0, toastT = 0, selected = null, time = 0;
+    const player = { x: SPAWN.tx * TS + TS / 2, y: SPAWN.ty * TS + TS / 2, dir: "down", moving: false, w: 20, h: 12, speed: 150 };
+    try { const s = JSON.parse(localStorage.getItem(STORE) || "[]"); collected = new Set(s.filter((id) => OCTOCATS.some((c) => c.id === id))); } catch (e) { /* storage unavailable */ }
+    const save = () => { try { localStorage.setItem(STORE, JSON.stringify([...collected])); } catch (e) { /* ignore */ } };
+
+    const images = {};
+    function loadImg(key, src) { if (!src) return; const im = new Image(); im.onload = () => { images[key] = im; }; im.src = src; }
+    loadImg("player", ASSETS.player);
+    for (const [id, src] of Object.entries(ASSETS.octocats)) loadImg(id, src);
+
+    /* ---------- Sprites (placeholders) ---------- */
+    function drawOctocat(c, x, y, s, color, t, img) {
+      if (img) { c.drawImage(img, x - s / 2, y - s / 2, s, s); return; }
+      const b = Math.sin(t * 4) * s * 0.03;
+      c.save(); c.translate(x, y + b);
+      c.strokeStyle = color; c.lineWidth = s * 0.09; c.lineCap = "round";
+      for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * s * 0.12, s * 0.2); c.quadraticCurveTo(i * s * 0.2, s * 0.42, i * s * 0.28 + Math.sin(t * 3 + i) * s * 0.04, s * 0.46); c.stroke(); }
+      c.fillStyle = color; c.beginPath(); c.arc(0, 0, s * 0.34, 0, 7); c.fill();
+      c.beginPath(); c.moveTo(-s * 0.32, -s * 0.12); c.lineTo(-s * 0.3, -s * 0.46); c.lineTo(-s * 0.08, -s * 0.3); c.fill();
+      c.beginPath(); c.moveTo(s * 0.32, -s * 0.12); c.lineTo(s * 0.3, -s * 0.46); c.lineTo(s * 0.08, -s * 0.3); c.fill();
+      c.fillStyle = "#fff"; c.beginPath(); c.arc(-s * 0.13, -s * 0.03, s * 0.08, 0, 7); c.arc(s * 0.13, -s * 0.03, s * 0.08, 0, 7); c.fill();
+      c.fillStyle = "#0d1117"; c.beginPath(); c.arc(-s * 0.13, -s * 0.03, s * 0.04, 0, 7); c.arc(s * 0.13, -s * 0.03, s * 0.04, 0, 7); c.fill();
+      c.restore();
+    }
+    function drawPlayer(c, x, y, t) {
+      if (images.player) { c.drawImage(images.player, x - 16, y - 28, 32, 32); return; }
+      const step = player.moving ? Math.sin(t * 14) * 3 : 0, d = player.dir;
+      c.fillStyle = "rgba(0,0,0,.3)"; c.beginPath(); c.ellipse(x, y + 2, 11, 5, 0, 0, 7); c.fill();
+      c.fillStyle = "#30363d"; c.fillRect(x - 7, y - 8 + (step > 0 ? 0 : 0), 6, 9 - Math.max(0, step)); c.fillRect(x + 1, y - 8, 6, 9 + Math.min(0, step));
+      c.fillStyle = "#1f6feb"; c.fillRect(x - 9, y - 22, 18, 15);          // shirt
+      c.fillStyle = "#f2c9a0"; c.beginPath(); c.arc(x, y - 27, 8, 0, 7); c.fill(); // head
+      c.fillStyle = "#da3633"; c.beginPath(); c.arc(x, y - 29, 8.5, Math.PI, 0); c.fill(); // cap
+      if (d === "up") { c.fillStyle = "#da3633"; c.fillRect(x - 8.5, y - 30, 17, 4); }
+      else {
+        c.fillStyle = "#da3633"; c.fillRect(x - 8.5, y - 30, 17, 2);
+        c.fillStyle = "#0d1117";
+        if (d === "down") { c.fillRect(x - 4, y - 27, 2, 3); c.fillRect(x + 2, y - 27, 2, 3); }
+        else { const o = d === "left" ? -1 : 1; c.fillRect(x + o * 4 - 1, y - 27, 2, 3); c.fillStyle = "#da3633"; c.fillRect(x + (o > 0 ? 6 : -14), y - 29, 8, 2); }
+      }
+    }
+
+    /* ---------- Movement & collection ---------- */
+    function blocked(px, py) {
+      const x0 = Math.floor((px - player.w / 2) / TS), x1 = Math.floor((px + player.w / 2 - 0.01) / TS);
+      const y0 = Math.floor((py - player.h) / TS), y1 = Math.floor((py - 0.01) / TS);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (solidAt(x, y)) return true;
+      return false;
+    }
+    function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("show"); toastT = 2.2; }
+    function collect(c) {
+      collected.add(c.id); save(); updateCount();
+      toast(collected.size === OCTOCATS.length ? "You caught them all! Open your inventory (I)." : "Collected " + c.name + "!");
+      if (!$("inv").hidden) renderInventory();
+    }
+    function update(dt) {
+      let dx = (keys.d || keys.ArrowRight ? 1 : 0) - (keys.a || keys.ArrowLeft ? 1 : 0);
+      let dy = (keys.s || keys.ArrowDown ? 1 : 0) - (keys.w || keys.ArrowUp ? 1 : 0);
+      player.moving = !!(dx || dy);
+      if (player.moving) {
+        if (Math.abs(dx) >= Math.abs(dy) && dx) player.dir = dx > 0 ? "right" : "left"; else player.dir = dy > 0 ? "down" : "up";
+        const n = Math.hypot(dx, dy), step = player.speed * dt;
+        const nx = player.x + dx / n * step, ny = player.y + dy / n * step;
+        if (!blocked(nx, player.y)) player.x = nx;
+        if (!blocked(player.x, ny)) player.y = ny;
+      }
+      for (const c of OCTOCATS) {
+        if (collected.has(c.id)) continue;
+        if (Math.hypot(player.x - (c.tx * TS + TS / 2), (player.y - 8) - (c.ty * TS + TS / 2)) < 22) collect(c);
+      }
+      if (toastT > 0 && (toastT -= dt) <= 0) $("toast").classList.remove("show");
+    }
+
+    /* ---------- Rendering ---------- */
+    function render() {
+      const camX = Math.max(0, Math.min(MW * TS - VW, player.x - VW / 2));
+      const camY = Math.max(0, Math.min(MH * TS - VH, player.y - VH / 2));
+      ctx.drawImage(mapCv, Math.round(camX), Math.round(camY), VW, VH, 0, 0, VW, VH);
+      ctx.save(); ctx.translate(-Math.round(camX), -Math.round(camY));
+      for (const c of OCTOCATS) {
+        if (collected.has(c.id)) continue;
+        const cx = c.tx * TS + TS / 2, cy = c.ty * TS + TS / 2;
+        ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(cx, cy + 12, 11, 4, 0, 0, 7); ctx.fill();
+        drawOctocat(ctx, cx, cy, 30, c.color, time + c.tx, images[c.id]);
+      }
+      drawPlayer(ctx, player.x, player.y, time);
+      ctx.restore();
     }
     function loop(now) {
-      if (state === "playing") {
-        const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-        update(dt, now);
-      }
-      draw();
-      if (state === "playing") requestAnimationFrame(loop);
+      const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
+      if ($("inv").hidden) update(dt);
+      render();
+      requestAnimationFrame(loop);
     }
-    $("play").addEventListener("click", begin);
-    $("restart").addEventListener("click", begin);
-    addEventListener("keydown", (e) => {
-      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if (state === "playing" && (k.startsWith("Arrow") || k === " ")) e.preventDefault();
-      keys[k] = true;
+
+    /* ---------- Inventory ---------- */
+    function updateCount() { $("count").textContent = collected.size; $("total").textContent = OCTOCATS.length; }
+    function renderInventory() {
+      const g = $("grid"); g.textContent = "";
+      $("invCount").textContent = "(" + collected.size + "/" + OCTOCATS.length + ")";
+      for (const c of OCTOCATS) {
+        const found = collected.has(c.id);
+        const card = document.createElement("button");
+        card.type = "button"; card.className = "card " + (found ? "found" : "locked") + (selected === c.id ? " selected" : "");
+        if (found) {
+          const cc = document.createElement("canvas"); cc.width = cc.height = 64;
+          drawOctocat(cc.getContext("2d"), 32, 30, 56, c.color, 0, images[c.id]); card.appendChild(cc);
+        } else { const q = document.createElement("span"); q.className = "q"; q.textContent = "?"; card.appendChild(q); }
+        const name = document.createElement("span"); name.textContent = found ? c.name : "Undiscovered"; card.appendChild(name);
+        card.addEventListener("click", () => {
+          selected = c.id;
+          $("detail").textContent = found ? c.name + " - " + c.where : "Not found yet. Keep exploring Fort Mason!";
+          renderInventory();
+        });
+        g.appendChild(card);
+      }
+    }
+    function setInventory(open) {
+      $("inv").hidden = !open;
+      if (open) { keys = {}; renderInventory(); $("closeInv").focus(); } else cv.focus();
+    }
+    $("invBtn").addEventListener("click", () => setInventory($("inv").hidden));
+    $("closeInv").addEventListener("click", () => setInventory(false));
+    $("resetBtn").addEventListener("click", () => {
+      collected = new Set(); save(); selected = null; updateCount(); renderInventory();
+      $("detail").textContent = "Progress reset. Go find them again!";
     });
-    addEventListener("keyup", (e) => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+
+    /* ---------- Input ---------- */
+    const norm = (e) => (e.key.length === 1 ? e.key.toLowerCase() : e.key);
+    const MOVE_KEYS = new Set(["w", "a", "s", "d", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+    addEventListener("keydown", (e) => {
+      const k = norm(e);
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (k === "i") { setInventory($("inv").hidden); return; }
+      if (k === "Escape" && !$("inv").hidden) { setInventory(false); return; }
+      if (MOVE_KEYS.has(k) && $("inv").hidden) { keys[k] = true; e.preventDefault(); }
+    });
+    addEventListener("keyup", (e) => { keys[norm(e)] = false; });
     addEventListener("blur", () => { keys = {}; });
-    function pt(e) { const b = cv.getBoundingClientRect(); return { x: (e.clientX - b.left) * W / b.width, y: (e.clientY - b.top) * H / b.height }; }
-    cv.addEventListener("pointerdown", (e) => { target = pt(e); cv.setPointerCapture(e.pointerId); });
-    cv.addEventListener("pointermove", (e) => { if (target) target = pt(e); });
-    cv.addEventListener("pointerup", () => { target = null; });
-    cv.addEventListener("pointercancel", () => { target = null; });
-    reset(); draw();
+    cv.addEventListener("pointerdown", () => cv.focus());
+
+    updateCount(); renderInventory();
+    requestAnimationFrame((t) => { last = t; loop(t); });
   </script>
 </body>
 </html>
