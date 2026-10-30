@@ -253,8 +253,9 @@
       if (!$("inv").hidden) renderInventory();
     }
     function update(dt) {
-      let dx = (keys.d || keys.ArrowRight ? 1 : 0) - (keys.a || keys.ArrowLeft ? 1 : 0);
-      let dy = (keys.s || keys.ArrowDown ? 1 : 0) - (keys.w || keys.ArrowUp ? 1 : 0);
+      let dx = (keys.d || keys.ArrowRight ? 1 : 0) - (keys.a || keys.ArrowLeft ? 1 : 0) + pad.x;
+      let dy = (keys.s || keys.ArrowDown ? 1 : 0) - (keys.w || keys.ArrowUp ? 1 : 0) + pad.y;
+      dx = Math.max(-1, Math.min(1, dx)); dy = Math.max(-1, Math.min(1, dy));
       player.moving = !!(dx || dy);
       if (player.moving) {
         if (Math.abs(dx) >= Math.abs(dy) && dx) player.dir = dx > 0 ? "right" : "left"; else player.dir = dy > 0 ? "down" : "up";
@@ -292,6 +293,7 @@
     }
     function loop(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
+      pollGamepad();
       if (scene === "battle") { updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
       else { if (scene === "world" && $("inv").hidden) update(dt); render(); }
       if (toastT > 0 && scene !== "world" && (toastT -= dt) <= 0) $("toast").classList.remove("show");
@@ -452,6 +454,38 @@
     addEventListener("keyup", (e) => { keys[norm(e)] = false; });
     addEventListener("blur", () => { keys = {}; });
     cv.addEventListener("pointerdown", () => cv.focus());
+
+    /* ---------- Gamepad / controller ---------- */
+    // Standard mapping: 0=A 1=B 3=Y 9=Start, 12-15=D-pad, axes 0/1=left stick.
+    const pad = { x: 0, y: 0, id: null, prev: [] };
+    const DEAD = 0.25;
+    function activePad() {
+      for (const g of (navigator.getGamepads ? navigator.getGamepads() : [])) if (g && g.connected) return g;
+      return null;
+    }
+    function padStatus(g) {
+      pad.id = g ? g.id : null;
+      document.title = g ? "Controller: " + g.id : document.title.replace(/^Controller: .*/, "Mona's Octoverse Arcade");
+    }
+    addEventListener("gamepadconnected", (e) => { padStatus(e.gamepad); toast("Controller connected: " + e.gamepad.id); });
+    addEventListener("gamepaddisconnected", () => { pad.x = pad.y = 0; pad.prev = []; padStatus(activePad()); toast("Controller disconnected"); });
+    function pollGamepad() {
+      const g = activePad();
+      if (!g) { pad.x = pad.y = 0; return; }
+      if (pad.id !== g.id) padStatus(g);
+      const b = (i) => !!(g.buttons[i] && g.buttons[i].pressed);
+      let x = g.axes[0] || 0, y = g.axes[1] || 0;
+      if (Math.hypot(x, y) < DEAD) x = y = 0;
+      x += (b(15) ? 1 : 0) - (b(14) ? 1 : 0); y += (b(13) ? 1 : 0) - (b(12) ? 1 : 0);
+      const inGame = scene === "world" && $("inv").hidden;
+      pad.x = inGame ? x : 0; pad.y = inGame ? y : 0;
+      const pressed = (i) => b(i) && !pad.prev[i];
+      if (pressed(0) && scene === "battle") fight();
+      if (pressed(1) && (scene === "battle" || scene === "pick")) runAway();
+      if ((pressed(3) || pressed(9)) && scene === "world") setInventory($("inv").hidden);
+      if (pressed(1) && scene === "world" && !$("inv").hidden) setInventory(false);
+      pad.prev = g.buttons.map((_, i) => b(i));
+    }
 
     updateCount(); renderInventory();
     requestAnimationFrame((t) => { last = t; loop(t); });
