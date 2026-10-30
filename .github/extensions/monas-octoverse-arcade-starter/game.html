@@ -81,7 +81,7 @@
       octocats: {} // e.g. { octocat: "assets/octocat.png" }
     };
 
-    const TS = 32, MW = 48, MH = 34, VW = 640, VH = 448, STORE = "fort-mason-octodex-v2", OLD_STORE = "fort-mason-octodex-v1";
+    const TS = 32, MW = 48, MH = 34, VW = 640, VH = 448;
     const cv = document.getElementById("game"), ctx = cv.getContext("2d");
     const $ = (id) => document.getElementById(id);
 
@@ -193,15 +193,8 @@
     ];
     const moveOf = (id) => MOVES.find((m) => m.name === moves[id]) || MOVES[0];
     function rollMoves() { for (const c of OCTOCATS) moves[c.id] = MOVES[Math.floor(Math.random() * MOVES.length)].name; }
-    try {
-      const s = JSON.parse(localStorage.getItem(STORE) || "null");
-      const ids = s ? s.collected : JSON.parse(localStorage.getItem(OLD_STORE) || "[]");
-      collected = new Set((ids || []).filter((id) => OCTOCATS.some((c) => c.id === id)));
-      if (s && s.moves) for (const c of OCTOCATS) if (MOVES.some((m) => m.name === s.moves[c.id])) moves[c.id] = s.moves[c.id];
-    } catch (e) { /* storage unavailable */ }
-    for (const c of OCTOCATS) if (!moves[c.id]) moves[c.id] = MOVES[Math.floor(Math.random() * MOVES.length)].name;
-    const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ collected: [...collected], moves })); } catch (e) { /* ignore */ } };
-    save();
+    rollMoves();
+    const save = () => {}; // progress is not persisted: every load starts with 0 Octocats
 
     const images = {};
     function loadImg(key, src) { if (!src) return; const im = new Image(); im.onload = () => { images[key] = im; }; im.src = src; }
