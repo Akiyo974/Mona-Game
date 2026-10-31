@@ -1,4 +1,92 @@
-# The Day of Learning Challenge
+# Mona's Octoverse Arcade: Fort Mason Octodex
+
+**A GitHub-themed monster-collector adventure set in San Francisco's Fort Mason, built as a Copilot App canvas extension.**
+
+Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great Meadow and the hill, and battle them with Git-powered moves (Commit Strike, Merge Slam, Force Push…) to fill your Octodex.
+
+▶ **Play in the browser:** https://akiyo974.github.io/Mona-Game/
+(published by GitHub Pages from `main`; see [Publish on GitHub Pages](#publish-on-github-pages))
+
+![Title screen](docs/screenshots/after-title.png)
+
+## Highlights
+
+**San Francisco & Fort Mason**
+- A stylised map of Fort Mason: Piers 1-3, the Bay Promenade, Fort Mason Center, Herbst Pavilion, the Great Meadow, Fort Mason Hill, Gashouse Cove and Laguna Street.
+- Alcatraz in the bay with a rotating lighthouse beam, a Laguna Street cable car, sailboats, seagulls and Karl the Fog rolling over the water.
+- Battles take place in front of the Golden Gate Bridge, Alcatraz and the SF skyline (Transamerica Pyramid, Coit Tower).
+
+**GitHub**
+- Twelve hand-drawn Octodex-style Octocats: Octocat, Mona, Dinotocat, Daftpunkcat, Jetpacktocat, Spidertocat, Scottocat, Heisencat, Privateer, Nyantocat, Chellocat and Defunktocat.
+- "GitHub Universe" signage on Fort Mason Center, where GitHub Universe is held.
+- Contribution-graph flower beds on the Great Meadow, GitHub colours throughout and Git-themed battle moves.
+
+**Gameplay & polish**
+- Title screen, location banners, minimap and "!" alerts when a wild Octocat is near.
+- Your first Octocat is free; after that, pick one of yours and battle to catch the next.
+- Battle intro transition, animated HP bars, screen shake, particles, "SUPER EFFECTIVE!" pop-ups and typewriter dialogue.
+- An Octodex with numbered entries and silhouettes for Octocats you have not found yet.
+- An 8-bit chiptune soundtrack (overworld + battle) and sound effects, all synthesised with Web Audio.
+- Keyboard, gamepad, and the Badger badge over USB serial.
+
+![The twelve Octocats](docs/screenshots/octocats.png)
+
+## Before and after
+
+| | Before | After |
+| --- | --- | --- |
+| **Start** | ![Workshop starter](docs/screenshots/before-starter.png) | ![Title screen](docs/screenshots/after-title.png) |
+| **World** | ![Original map](docs/screenshots/before-world.png) | ![New map](docs/screenshots/after-world.png) |
+| **Battle** | ![Original battle](docs/screenshots/before-battle.png) | ![New battle](docs/screenshots/after-battle.png) |
+| **Octodex** | ![Original Octodex](docs/screenshots/before-octodex.png) | ![New Octodex](docs/screenshots/after-octodex.png) |
+
+### More of San Francisco
+
+| Alcatraz & the bay | GitHub Universe at Fort Mason Center |
+| --- | --- |
+| ![Alcatraz](docs/screenshots/after-alcatraz.png) | ![GitHub Universe signage](docs/screenshots/after-universe.png) |
+| **Contribution-graph flower beds** | **Super effective!** |
+| ![Great Meadow](docs/screenshots/after-meadow.png) | ![Battle attack](docs/screenshots/after-attack.png) |
+
+## Controls
+
+| Action | Keyboard | Gamepad | Badger badge |
+| --- | --- | --- | --- |
+| Start | <kbd>Enter</kbd> / <kbd>Space</kbd> | A / Start | select |
+| Move | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows | D-pad / left stick | arrows |
+| Attack in battle | <kbd>F</kbd> or <kbd>1</kbd> | A | select |
+| Run from battle | <kbd>Esc</kbd> | B | back |
+| Octodex | <kbd>I</kbd> | Y / A | back closes |
+| Music on/off | <kbd>M</kbd> | | |
+
+Music starts on your first key press or click. The badge connects with the **Connect badge** button (Web Serial, Chrome or Edge only).
+
+## Run it
+
+**In the Copilot App (canvas extension).** Open this repository as a Project in the GitHub Copilot app and ask:
+
+> Open the Mona's Octoverse Arcade starter canvas.
+
+The extension lives in `.github/extensions/monas-octoverse-arcade-starter/`: `extension.mjs` registers the canvas and serves `game.html`, which contains the whole game (HTML, CSS and vanilla JavaScript, no build step, no external assets).
+
+**Locally.** Open `.github/extensions/monas-octoverse-arcade-starter/game.html` directly in a browser.
+
+## Publish on GitHub Pages
+
+The workflow `.github/workflows/pages.yml` publishes `game.html` as the site's `index.html` on every push to `main` that touches the game, and can also be run manually from the **Actions** tab.
+
+One-time setup:
+1. Go to **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push to `main` or run the **Deploy game to GitHub Pages** workflow. The game will be at https://akiyo974.github.io/Mona-Game/.
+
+On a free plan, GitHub Pages requires the repository to be public.
+
+---
+
+# Workshop challenge guide
+
+The rest of this README is the original Day of Learning Challenge guide that this project was built for.
 
 **GitHub Day of Learning | 2-hour workshop game challenge | Canvas Extension Edition**
 
