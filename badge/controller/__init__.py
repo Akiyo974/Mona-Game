@@ -211,6 +211,11 @@ def choosing(message):
     return message is not None and (message.get("t") == "pick" or (message.get("t") == "battle" and not message.get("busy")))
 
 
+def oversized(message):
+    """A pick menu with more entries than "pick 1".."pick 9" can reach: the game's own focus drives it."""
+    return message.get("t") == "pick" and len(message.get("options") or ()) > 9
+
+
 def accept(line):
     """Handles one line from the game: "?" or one JSON message."""
     global latest, world_map, choice
@@ -257,7 +262,7 @@ def commands():
     """Second screen buttons: sent before the +x lines so the game acts on the badge's choice."""
     global choice
     message = latest
-    if not choosing(message):
+    if not choosing(message) or oversized(message):
         return
     entries = message.get("moves") if message.get("t") == "battle" else message.get("options")
     count = min(len(entries or ()), 4 if message.get("t") == "battle" else 9)
@@ -379,7 +384,7 @@ def draw_title(message):
     centered("FORT MASON", 118, 22, white)
     centered("OCTODEX", 142, 36, lit)
     if (badge.ticks // 600) % 2 == 0:
-        centered("press a button", 204, 14, dim)
+        centered("press Select", 204, 14, dim)
 
 
 def draw_world(message):
@@ -461,13 +466,16 @@ def draw_pick(message):
     box(0, -6, WIDTH, 14 + 19 * len(lines), panel, edge)
     for i, line in enumerate(lines):
         write(line, 12, 4 + i * 19, 15, white)
-    options = message.get("options", ())[:9]
+    options = message.get("options", ())
+    # Up to 9 entries the badge picks with "pick N"; beyond that it shows the game's highlight
+    driven = oversized(message)
+    current = (message.get("sel", 0) or 0) if driven else choice
     top, height = 18 + 19 * len(lines), 30
     visible = (HEIGHT - 20 - top) // height
-    first = min(max(0, choice - visible + 1), max(0, len(options) - visible))
+    first = min(max(0, current - visible + 1), max(0, len(options) - visible))
     for i in range(first, min(len(options), first + visible)):
         y = top + (i - first) * height
-        selected = i == choice
+        selected = i == current
         box(8, y, WIDTH - 16, height - 4, raised if selected else panel, lit if selected else edge, radius=6)
         cy = y + (height - 4) / 2
         screen.pen = lit if selected else idle
@@ -476,7 +484,7 @@ def draw_pick(message):
         width, _ = screen.measure_text(number, font_size=12)
         write(number, 24 - width / 2, cy - 7, 12, background if selected else dim)
         write(fit(options[i], 14, WIDTH - 60), 40, cy - 8, 14, white)
-    centered("Up/Down choose · Select pick · Back run", 224, 11, dim)
+    centered("Arrows choose · Select pick" if driven else "Up/Down choose · Select pick · Back run", 224, 11, dim)
 
 
 def slide_hp(key, side, dt):
