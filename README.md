@@ -80,7 +80,25 @@ Built during the GitHub Day of Learning workshop by:
 
 Music starts on your first key press or click. The badge connects with the **Connect badge** button (Web Serial, Chrome or Edge only).
 
-**Badge as a second screen.** With a badge app that speaks the [badge protocol](docs/BADGE_PROTOCOL.md), the badge also shows the mini-map, the Octodex and, in battle, your four moves and both HP bars, so you can pick moves from the badge. Without it, the badge keeps working as a plain controller.
+## Bonus: Badger mode
+
+The GitHub Universe '26 badge (GitHub Badger 2350) becomes a controller **and a second screen** for the game, over USB serial with MicroPython.
+
+| World: live mini-map | Battle |
+| --- | --- |
+| ![Badge showing the mini-map](media/badge-photo-map.jpg) | ![Badge showing a battle](media/badge-photo-battle.jpg) |
+
+- **Controller:** every press and release of the badge's arrows, Select and Back drives the game, like a gamepad.
+- **Second screen:** the badge shows the title screen, a live mini-map (your position and the Octocats left, area, team level, Octodex progress), the Octodex, the pick menus and the battles (both HP bars, your four moves with type, power, accuracy and SUPER / weak, or the turn message).
+- **Play from the badge:** in battle, Up / Down choose a move, Select uses it, Left switches Octocat and Right runs; in a pick menu, Up / Down and Select pick an Octocat.
+
+To set it up, install the Controller app from [`badge/`](badge/README.md) on the badge, open **Controller**, then click **Connect badge** in the game (Chrome or Edge). The button reads **Badge: controller + screen**. A badge app without a screen keeps working as a plain controller. The messages between the game and the badge are described in the [badge protocol](docs/BADGE_PROTOCOL.md).
+
+## Trailer
+
+[![Fort Mason Octodex trailer](media/trailer-thumbnail-1280.jpg)](media/fort-mason-octodex-trailer.mp4)
+
+A 54-second trailer recorded from the game, with its own music, ending on Badger mode: [watch it](media/fort-mason-octodex-trailer.mp4).
 
 ## Run it
 
