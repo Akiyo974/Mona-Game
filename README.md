@@ -43,8 +43,9 @@ Want to add an Octocat, a move or an item? See [CONTRIBUTING.md](CONTRIBUTING.md
 - Your first Octocat is free; after that, pick one of yours and battle to catch the next.
 - Catch all twelve and a **Merge Conflict** boss blocks Fort Mason Center: its changes flip between Code, Ops and Security every turn. Resolve it to roll the credits.
 - Three trainers wait on the paths: **Intern Ida**, **Senior Dev Sam** (2 Octocats) and **Staff Engineer Robin** (3). Beat them for items and a hint about where an Octocat hides.
+- Every building can be entered: walk up into its door. Inside are the Pier 1 Boathouse, the Pier 2 Hackerspace, the Pier 3 Server Room, the GitHub Universe Keynote Hall, the Octodex Lab, the Herbst Pavilion booths and the Ship It Café, with nine people to talk to: Sailor Sal, Maker Max, SRE Sky, Keynote Speaker Kai, Attendee Alex, Curator Cleo (who tracks your Octodex and hints where the next Octocat is), Copilot, Swag Hubber Jo and Barista Bea. Jo and Bea each hand out one free item.
 - About 1 wild Octocat in 20 is **shiny**: a golden coat with twinkling stars, and a ★ in your Octodex.
-- 11 **achievements** in the Octodex, GitHub-profile style: First Commit, Pull Shark, Arctic Code Vault, Quickdraw, Galaxy Brain, Time Traveler, Mentor, Starstruck, Pair Extraordinaire, YOLO and Speedrunner (Merge Conflict resolved in under 15 minutes).
+- 12 **achievements** in the Octodex, GitHub-profile style: First Commit, Pull Shark, Arctic Code Vault, Quickdraw, Galaxy Brain, Time Traveler, Mentor, Starstruck, Pair Extraordinaire, YOLO and Speedrunner (Merge Conflict resolved in under 15 minutes) and Networker (talk to everyone inside the buildings).
 - A play timer: the credits show your time and your best.
 - Progress (Octodex, items, trainers, boss, position, time) is saved in your browser; the title screen offers **Continue**. Achievements and your best time survive **Reset progress**.
 - **Settings**: separate music and sound-effect volumes, a colour-blind friendly type palette (Okabe-Ito), "reduce screen shake and flashes", and remappable keys.
@@ -90,6 +91,9 @@ Want to add an Octocat, a move or an item? See [CONTRIBUTING.md](CONTRIBUTING.md
 | Pick a move in battle | <kbd>1</kbd>–<kbd>4</kbd> (or <kbd>F</kbd> for the first) | D-pad + A | tap the move | arrows + select |
 | Use a Hotfix / Revert | <kbd>H</kbd> / <kbd>R</kbd> | D-pad + A | tap the item | not on the second screen yet |
 | Switch Octocat | <kbd>S</kbd> | D-pad + A | tap Switch | arrows + select |
+| Enter a building | walk up into its door | | | |
+| Talk to someone / next line | <kbd>E</kbd>, <kbd>Enter</kbd> or <kbd>Space</kbd> | A | A or tap the text | select |
+| Leave a building | walk down through the green **EXIT** mat | | | |
 | Run from battle | <kbd>Esc</kbd> | B | B | back |
 | Octodex | <kbd>I</kbd> | Y / A | A opens, B closes | back closes |
 | Music on/off | <kbd>M</kbd> | | Music button | |
