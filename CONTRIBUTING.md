@@ -17,7 +17,7 @@ The whole game is one file: [`.github/extensions/monas-octoverse-arcade-starter/
 | The Merge Conflict boss | `const BOSS`, `drawConflict()` and the `battle.boss` checks |
 | Trainers | `const TRAINERS` and `beatTrainer()` |
 | Building interiors and the people inside | `const ROOMS` (one room per entry of `BUILDINGS`, same order), `drawItem()` for furniture, `tryTalk()` for dialogue |
-| The bus and GitHub HQ | `BUS_STOP`, `rideBus()` and `renderBus()`; `HQ_STREET` and `HQ` are tile-grid rooms (`hqGrid()` builds the floor plan, `HQ_ART` draws the furniture) |
+| The bus and GitHub HQ | `BUS_STOP`, `rideBus()` and `renderBus()`; `HQ_STREET` and `HQ` are tile-grid rooms; `SKETCH` holds the floor plan in sketch pixels and `hqGrid()` traces it, one tile per 32 px; `HQ_ART` draws the furniture |
 | Shiny Octocats | `SHINY_RATE` and `drawCat()` |
 | Achievements | `const ACHIEVEMENTS` and `unlock()` |
 | Settings and key bindings | `KEY_ACTIONS`, `applySettings()` and `refreshKeyLabels()` |

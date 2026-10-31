@@ -1545,14 +1545,15 @@
     }
 
     // Grid rooms: "#" brick, "w" white partition, "." polished concrete, "," wood, "D" way out, "U" way in,
-    // "g" security gate (open with a visitor badge), "X" staff door, "F" facade, "s" sidewalk, "r" road.
-    const gridSolid = (r, tx, ty) => { const ch = (r.grid[ty] || "")[tx]; return ch === undefined || "#wXrF".includes(ch) || (ch === "g" && !hqPass); };
+    // "g" security gate (open with a visitor badge), "X" staff door, "F" facade, "s" sidewalk, "r" road,
+    // "R" glass railing, "B" bleachers, "S" the statue's sand bed, "p" planter, "C" café counter.
+    const gridSolid = (r, tx, ty) => { const ch = (r.grid[ty] || "")[tx]; return ch === undefined || "#wXrFRSpBC".includes(ch) || (ch === "g" && !hqPass); };
     function drawGridRoom(c, r) {
       for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) {
         const ch = r.grid[y][x], X = x * TS, Y = y * TS, below = (r.grid[y + 1] || "")[x];
         const box = (dx, dy, w, h, f) => { c.fillStyle = f; c.fillRect(X + dx, Y + dy, w, h); };
         const face = below !== undefined && !"#wF".includes(below);
-        if (".gDX".includes(ch)) {                             // polished concrete
+        if (".gDXRC".includes(ch)) {                           // polished concrete
           box(0, 0, TS, TS, hash(x, y, 3) < 0.5 ? "#9aa1a6" : "#959ca1");
           box(hash(x, y, 4) * 20, hash(x, y, 5) * 26, 10, 3, "rgba(255,255,255,.07)");
         }
@@ -1583,6 +1584,25 @@
           if ((r.grid[y - 1] || "")[x] !== "r") { box(0, 0, TS, 5, "#8d9297"); box(0, 5, TS, 2, "#2d3138"); }
           if ((r.grid[y + 1] || "")[x] === "r" && (r.grid[y - 1] || "")[x] === "r" && x % 2) box(0, TS - 2, TS, 3, "#f2cc60");
         } else if (ch === "F" || ch === "U") box(0, 0, TS, TS, "#6b7178");
+        else if (ch === "R") {                                 // glass panel with the dark red handrail, like the bleachers photo
+          box(3, 8, TS - 6, 16, "rgba(160,210,255,.35)"); box(3, 8, TS - 6, 2, "rgba(220,240,255,.7)");
+          box(0, 14, TS, 3, "#6e2a2a"); box(3, 6, 3, 20, "#30363d"); box(TS - 6, 6, 3, 20, "#30363d");
+        } else if (ch === "B") {                               // bleacher step: blue riser, wooden tread, grey cushion
+          box(0, 0, TS, TS, "#5d7a99"); box(0, TS - 12, TS, 12, "#d9b98c"); box(0, TS - 20, TS, 8, "#9aa4ae");
+          if (hash(x, y, 6) < 0.25) box(8 + hash(x, y, 7) * 12, 6, 10, 8, ["#e3734b", "#f2cc60", "#bc8cff", "#7ee787"][Math.floor(hash(x, y, 8) * 4)]);
+        } else if (ch === "S" || ch === "p") {                 // sand bed (or planter) with a wooden rim
+          const same = (dx, dy) => "Sp".includes((r.grid[y + dy] || "")[x + dx] || "#");
+          box(0, 0, TS, TS, ch === "S" ? "#e8dcc0" : "#3d6b3f");
+          if (ch === "S") { box(hash(x, y, 2) * 24, hash(x, y, 3) * 24, 3, 2, "#cdbd99"); if (hash(x, y, 4) < 0.18) { c.fillStyle = "#8c959f"; c.beginPath(); c.ellipse(X + 16, Y + 18, 9, 6, 0, 0, 7); c.fill(); } if (hash(x, y, 5) < 0.2) { c.strokeStyle = "#2ea043"; c.lineWidth = 2; c.beginPath(); c.moveTo(X + 16, Y + 26); c.lineTo(X + 12, Y + 8); c.moveTo(X + 16, Y + 26); c.lineTo(X + 20, Y + 6); c.stroke(); } }
+          else { c.fillStyle = "#2ea043"; for (const [px, py] of [[10, 10], [22, 14], [14, 22]]) { c.beginPath(); c.arc(X + px, Y + py, 7, 0, 7); c.fill(); } }
+          c.fillStyle = "#a8743f";
+          if (!same(0, -1)) c.fillRect(X, Y, TS, 4); if (!same(0, 1)) c.fillRect(X, Y + TS - 4, TS, 4);
+          if (!same(-1, 0)) c.fillRect(X, Y, 4, TS); if (!same(1, 0)) c.fillRect(X + TS - 4, Y, 4, TS);
+        } else if (ch === "C") {                               // café counter: grey ribbed front, light top
+          box(0, 4, TS, TS - 4, "#6e7681"); for (let k = 3; k < TS; k += 4) box(k, 12, 1, TS - 14, "rgba(0,0,0,.18)");
+          box(0, 2, TS, 9, "#c9cdd1"); box(0, 2, TS, 2, "#e6e9ec");
+          if (hash(x, y, 9) < 0.35) { box(8, -8, 16, 12, "#30363d"); box(10, -5, 12, 4, "#8b949e"); }
+        }
       }
     }
     function drawFacade(c) {                                   // 88 Colin P Kelly Street, after the street-view photo
@@ -1638,62 +1658,100 @@
         room.busT -= frameDt; const k = Math.max(0, 1.6 - room.busT);
         drawBus(c, 30 + k * k * 300, 11 * TS + 10, 1, time + k * 4, "FORT MASON");
       },
-      up: () => enterPlace(HQ, 27 * TS, 22 * TS + 16, "up")
+      up: () => enterPlace(HQ, 29 * TS, 21 * TS + 16, "up")
     };
-    function hqGrid() {                                        // 36 × 24, the street is at the bottom
-      const W = 36, H = 24, g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (y < 2 || x === 0 || x === W - 1 || y === H - 1 ? "#" : ".")));
-      const set = (x, y, w, h, ch) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) g[j][i] = ch; };
-      set(18, 15, 17, 1, "w"); set(18, 15, 1, 8, "w");         // lobby walls; the left one carries the giant screen
-      set(27, 15, 3, 1, "g");                                  // the three security gates
-      set(26, 23, 2, 1, "D");                                  // main entrance
-      set(3, 6, 13, 4, ",");                                   // stage floor in front of the bleachers
-      set(0, 12, 1, 2, "X"); set(1, 12, 1, 2, "g");            // door 2 and its two gates
+    // The HQ floor plan is traced from the player's sketch (1152 × 648 px): every 32 px of the drawing is one tile,
+    // shifted by one column and two rows for the outer walls. Points below are in sketch pixels.
+    const SK = { col: (x) => Math.floor(x / 32) + 1, row: (y) => Math.floor(y / 32) + 2 };
+    const SKETCH = {
+      standsTop: [[198, 183], [250, 165], [300, 150], [350, 128], [375, 125], [420, 128], [450, 135], [500, 145], [550, 160], [580, 175], [610, 195], [632, 228]],
+      standsBottom: [[175, 308], [176, 330], [200, 355], [245, 390], [320, 397], [400, 377], [470, 360], [540, 335], [580, 310], [603, 285]],
+      bedTop: [[665, 310], [700, 285], [760, 250], [800, 237], [860, 240], [900, 250], [955, 268], [1000, 272], [1010, 290], [1030, 325], [1090, 315], [1151, 300]],
+      bedBottom: [[665, 310], [720, 340], [800, 365], [900, 385], [960, 390], [1151, 400]],
+      cafe: [[405, 640], [410, 520], [480, 470], [560, 412]],
+      officeWall: [[1040, 0], [1090, 300]]
+    };
+    function hqGrid() {                                        // 38 × 23
+      const W = 38, H = 23, g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (y < 2 || x === 0 || x === W - 1 || y === H - 1 ? "#" : ".")));
+      const put = (x, y, ch) => { if (y > 1 && y < H - 1 && x > 0 && x < W - 1) g[y][x] = ch; };
+      const trace = (pts, ch) => {
+        for (let i = 0; i < pts.length - 1; i++) {
+          const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 6);
+          for (let k = 0; k <= n; k++) put(SK.col(x0 + (x1 - x0) * k / n), SK.row(y0 + (y1 - y0) * k / n), ch);
+        }
+      };
+      const yAt = (pts, x) => { for (let i = 0; i < pts.length - 1; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1]; if (x >= Math.min(x0, x1) && x <= Math.max(x0, x1) && x0 !== x1) return y0 + (y1 - y0) * (x - x0) / (x1 - x0); } return null; };
+      for (let x = 1; x < W - 1; x++) for (let y = 2; y < H - 1; y++) {   // fill the two curved zones
+        const sx = (x - 1) * 32 + 16, sy = (y - 2) * 32 + 16;
+        const st = yAt(SKETCH.standsTop, sx), sb = yAt(SKETCH.standsBottom, sx);
+        if (st !== null && sb !== null && sy > st && sy < sb) g[y][x] = sy < 300 ? "B" : ",";   // bleachers at the back, stage floor in front
+        const bt = yAt(SKETCH.bedTop, sx), bb = yAt(SKETCH.bedBottom, sx);
+        if (bt !== null && bb !== null && sy > bt && sy < bb) g[y][x] = sx < 960 ? "S" : "p";    // the statue's sand bed, then planters
+      }
+      trace(SKETCH.standsTop, "R"); trace(SKETCH.standsBottom, "R");   // glass railing around the bleachers
+      trace(SKETCH.bedTop, "S"); trace(SKETCH.bedBottom, "S"); trace([[960, 268], [965, 390]], "p");
+      trace(SKETCH.cafe, "C");                                 // the Café Mona Lisa counter follows the curve
+      trace(SKETCH.officeWall, "w");
+      g[11][18] = g[11][19] = ","; g[11][6] = ",";             // ways into the bleachers zone, right and left
+      for (let y = SK.row(400); y < H - 1; y++) g[y][SK.col(575)] = "w";   // the wall with the giant screen
+      let prev = null;                                         // diagonal wall from the screen wall to the guard post
+      for (let x = SK.col(575); x <= SK.col(960); x++) {
+        const y = SK.row(400 + ((x - 1) * 32 + 16 - 575) * 100 / 385);
+        g[y][x] = "w"; if (prev !== null && y > prev) g[prev][x] = "w"; prev = y;
+      }
+      for (const x of [26, 27, 28]) g[16][x] = "g";            // the three security gates
+      for (let x = SK.col(1015); x < W - 1; x++) g[SK.row(500)][x] = "w";   // wall behind the guard post
+      for (let y = 18; y < H - 1; y++) for (let x = 33; x < W - 1; x++) g[y][x] = "w";
+      g[H - 1][28] = g[H - 1][29] = "D";                       // Entrée 1
+      g[13][0] = g[14][0] = "X"; g[13][1] = g[14][1] = "g";    // Porte 2 and its two gates
       return g.map((r) => r.join(""));
     }
     const HQ = {
-      name: "GitHub HQ", w: 36, h: 24, grid: hqGrid(),
+      name: "GitHub HQ", w: 38, h: 23, grid: hqGrid(),
       items: [
-        // lobby: giant screen on the left wall, sofa against the front wall, armchairs and a coffee table, guard post on the right
-        { kind: "gscreen", x: 19, y: 16, w: 1, h: 4 }, { kind: "sofa", x: 20, y: 22, w: 4, h: 1 },
-        { kind: "armchair", x: 20, y: 19, w: 1, h: 1 }, { kind: "armchair", x: 23, y: 19, w: 1, h: 1 }, { kind: "ctable", x: 21, y: 20, w: 2, h: 1 },
-        { kind: "guardpost", x: 31, y: 16, w: 1, h: 7 }, { kind: "plant", x: 19, y: 22, w: 1, h: 1 }, { kind: "plant", x: 30, y: 16, w: 1, h: 1 },
-        // Café Mona Lisa, left of the screen wall
-        { kind: "cafeback", x: 11, y: 16, w: 7, h: 1 }, { kind: "cafecounter", x: 11, y: 18, w: 7, h: 1 },
-        { kind: "cafetable", x: 12, y: 20, w: 1, h: 1 }, { kind: "cafetable", x: 15, y: 20, w: 1, h: 1 },
-        // round tables, bikes, door 2's security post
-        { kind: "roundtable", x: 2, y: 16, w: 2, h: 2 }, { kind: "roundtable", x: 5, y: 16, w: 2, h: 2 },
-        { kind: "roundtable", x: 2, y: 19, w: 2, h: 2 }, { kind: "roundtable", x: 5, y: 19, w: 2, h: 2 },
-        { kind: "bikes", x: 8, y: 21, w: 2, h: 1 }, { kind: "guardpost", x: 2, y: 10, w: 2, h: 1 },
-        // bleachers, podium and the presentation screen facing them
-        { kind: "bleachers", x: 3, y: 2, w: 13, h: 4 }, { kind: "podium", x: 9, y: 7, w: 1, h: 1 }, { kind: "pscreen", x: 5, y: 9, w: 9, h: 1 },
-        // lounge behind the bleachers, the statue facing the gates, desks for Hubbers
-        { kind: "bench", x: 19, y: 2, w: 7, h: 1 }, { kind: "whitetable", x: 19, y: 5, w: 3, h: 1 }, { kind: "whitetable", x: 23, y: 5, w: 3, h: 1 },
-        { kind: "smalltable", x: 20, y: 8, w: 1, h: 1 }, { kind: "smalltable", x: 24, y: 8, w: 1, h: 1 },
-        { kind: "statue", x: 27, y: 10, w: 3, h: 3 },
-        { kind: "desk", x: 28, y: 3, w: 3, h: 1 }, { kind: "desk", x: 32, y: 3, w: 2, h: 1 }, { kind: "desk", x: 28, y: 6, w: 3, h: 1 }, { kind: "desk", x: 32, y: 6, w: 2, h: 1 },
-        // wooden pillars and plants, like the photos
-        { kind: "pillar", x: 17, y: 7, w: 1, h: 1 }, { kind: "pillar", x: 17, y: 12, w: 1, h: 1 }, { kind: "pillar", x: 10, y: 13, w: 1, h: 1 },
-        { kind: "pillar", x: 23, y: 12, w: 1, h: 1 }, { kind: "pillar", x: 33, y: 12, w: 1, h: 1 },
-        { kind: "plant", x: 1, y: 2, w: 1, h: 1 }, { kind: "plant", x: 17, y: 2, w: 1, h: 1 }, { kind: "plant", x: 26, y: 2, w: 1, h: 1 }, { kind: "plant", x: 34, y: 9, w: 1, h: 1 }
+        // lobby: giant screen on the wall, two armchairs and a round coffee table, the sofa against the front wall, the guard post
+        { kind: "gscreen", x: 19, y: 16, w: 1, h: 4 }, { kind: "armchair", x: 20, y: 19, w: 1, h: 1 }, { kind: "armchair", x: 23, y: 19, w: 1, h: 1 },
+        { kind: "ctable", x: 21, y: 20, w: 2, h: 1 }, { kind: "sofa", x: 20, y: 21, w: 4, h: 1 },
+        { kind: "guardpost", x: 31, y: 18, w: 1, h: 4 },
+        // Café Mona Lisa's round tables, the bikes, the second security post by door 2
+        { kind: "cafetable2", x: 5, y: 16, w: 1, h: 1 }, { kind: "cafetable2", x: 8, y: 15, w: 1, h: 1 },
+        { kind: "cafetable2", x: 5, y: 18, w: 1, h: 1 }, { kind: "cafetable2", x: 8, y: 18, w: 1, h: 1 },
+        { kind: "bikes", x: 10, y: 20, w: 2, h: 1 }, { kind: "reception", x: 5, y: 13, w: 3, h: 1 },
+        // conference podium and the presentation screen facing the bleachers
+        { kind: "podium", x: 11, y: 11, w: 1, h: 1 }, { kind: "pscreen", x: 9, y: 12, w: 7, h: 1 },
+        // lounge behind the bleachers, tables area behind them on the right, the statue facing the security gates
+        { kind: "bench", x: 2, y: 2, w: 8, h: 1 }, { kind: "smalltable", x: 3, y: 4, w: 1, h: 1 }, { kind: "smalltable", x: 7, y: 4, w: 1, h: 1 },
+        { kind: "bench", x: 21, y: 2, w: 9, h: 1 }, { kind: "whitetable", x: 22, y: 5, w: 3, h: 1 }, { kind: "whitetable", x: 27, y: 5, w: 3, h: 1 },
+        { kind: "whitetable", x: 24, y: 8, w: 3, h: 1 },
+        { kind: "statuefig", x: 25, y: 10, w: 3, h: 2 },
+        // wooden pillars, as in the photos
+        { kind: "pillar", x: 19, y: 4, w: 1, h: 1 }, { kind: "pillar", x: 21, y: 13, w: 1, h: 1 }, { kind: "pillar", x: 12, y: 16, w: 1, h: 1 }, { kind: "pillar", x: 31, y: 7, w: 1, h: 1 }
       ],
       npcs: [
-        NPC("gabe", "Guard Gabe", 32, 18, GUARD, () => hqPass ? ["Badge looks good. The Octocat statue is just past the gates.", "Door 2 on the far side is for staff only."]
-          : { lines: ["Welcome to GitHub HQ, 88 Colin P Kelly Street!", "Past those security gates is the Hubbers' floor. Visitors need a badge.", "Here's yours. The gates will open for you now. (Visitor badge)"], then: grantBadge }, { reach: 80 }),
-        NPC("rosa", "Guard Rosa", 32, 20, GUARD2, () => hqPass ? ["See the giant screen on the wall? It shows GitHub activity happening live, all over the world.", "Every push, every pull request, every star."]
+        NPC("gabe", "Guard Gabe", 32, 19, GUARD, () => hqPass ? ["Badge looks good. The Octocat statue is right in front of the gates.", "Porte 2 on the far side is for staff only."]
+          : { lines: ["Welcome to GitHub HQ, 88 Colin P Kelly Street!", "Past those three security gates is the Hubbers' floor. Visitors need a badge.", "Here's yours. The gates will open for you now. (Visitor badge)"], then: grantBadge }, { reach: 80 }),
+        NPC("rosa", "Guard Rosa", 32, 21, GUARD2, () => hqPass ? ["See the giant screen on the wall? It shows GitHub activity happening live, all over the world.", "Every push, every pull request, every star."]
           : { lines: ["Checking in? Visitors get a badge at this desk.", "There you go. Enjoy your visit! (Visitor badge)"], then: grantBadge }, { reach: 80 }),
-        NPC("vic", "Visitor Vic", 25, 20, HUBBER("#bf4b8a", "#f5c9a6", "#d29922", "#db61a2"), () => ["I'm here for my interview. Do I look nervous?", "I practised my git rebase all night."]),
-        NPC("lisa", "Barista Lisa", 14, 17, HUBBER("#4fb3b0", "#e0ac69", "#0d1117", "#0d1117"), () =>
+        NPC("vic", "Visitor Vic", 26, 19, HUBBER("#bf4b8a", "#f5c9a6", "#d29922", "#db61a2"), () => ["I'm here for my interview. Do I look nervous?", "I practised my git rebase all night."]),
+        NPC("lisa", "Barista Lisa", 14, 20, HUBBER("#4fb3b0", "#e0ac69", "#0d1117", "#0d1117"), () =>
           giveOnce("lisa", { hotfix: 1 }) ? ["Welcome to Café Mona Lisa!", "One cold brew, on the house. Works just like a Hotfix. (+1 Hotfix)"]
-            : ["Back for a refill? The cold brew is self-serve, I'm only here for the latte art.", "That Octocat surfing on our sign? Very California."], { reach: 80 }),
-        NPC("ben", "Hubber Ben", 8, 19, HUBBER("#3fb950", "#f5c9a6", "#b62324", "#238636"), () => ["I bike here every morning. San Francisco hills build character.", "The rack fills up fast, so I come early."]),
-        NPC("theo", "Guard Theo", 4, 11, GUARD2, () => ["This is the second security post. Door 2 is staff only.", "Visitors come and go through the main entrance on Colin P Kelly Street."]),
-        NPC("priya", "Speaker Priya", 10, 7, HUBBER("#8957e5", "#8d5524", "#0d1117", "#24292f"), () => ["Welcome to today's talk: Building the open future of AI.", "Open source is how we build it, together. Grab a seat on the bleachers!",
+            : ["Back for a refill? Grab a round table, I'll bring it over.", "That Octocat surfing on our sign? Very California."], { reach: 80 }),
+        NPC("ben", "Hubber Ben", 10, 18, HUBBER("#3fb950", "#f5c9a6", "#b62324", "#238636"), () => ["I bike here every morning. San Francisco hills build character.", "The bike rack is right by the café. Coffee first, then code."]),
+        NPC("theo", "Guard Theo", 4, 14, GUARD2, () => ["This is the second security post. Porte 2 and its gates are staff only.", "Visitors come and go through Entrée 1 on Colin P Kelly Street."]),
+        NPC("priya", "Speaker Priya", 12, 11, HUBBER("#8957e5", "#8d5524", "#0d1117", "#24292f"), () => ["Welcome to today's talk: Building the open future of AI.", "Open source is how we build it, together. Grab a seat on the bleachers!",
           collected.size === OCTOCATS.length ? "And a round of applause for the trainer who caught all twelve Octocats!" : "Psst: there are still Octocats to catch back at Fort Mason."]),
-        NPC("hana", "Hubber Hana", 22, 7, HUBBER("#1f6feb", "#e0ac69", "#3b2416", "#58a6ff"), () => ["This lounge is my favourite spot to code. Comfy benches, good coffee.", "On meetup nights, the bleachers next door turn into a stage."]),
-        NPC("kim", "Hubber Kim", 30, 4, HUBBER("#f0883e", "#f5c9a6", "#0d1117", "#bd561d"), () => ["Shh, I'm shipping a feature.", "...Merged! Want to see it? Sorry, it's a secret until Universe."]),
-        NPC("statue", "the Octocat statue", 28, 13, null, () => ["A giant Octocat statue sits on a bed of sand, lit up in blue.", "It looks like it's keeping an eye on every repository on Earth."],
-          { ghost: true, reach: 46, hint: "look at the Octocat statue" })
+        NPC("hana", "Hubber Hana", 26, 7, HUBBER("#1f6feb", "#e0ac69", "#3b2416", "#58a6ff"), () => ["These tables behind the bleachers are my favourite spot to code.", "On meetup nights, everyone sits on the bleachers for the talks."]),
+        NPC("statue", "the Octocat statue", 26, 15, null, () => ["A giant Octocat statue sits on a bed of sand, lit up in blue.", "It looks like it's keeping an eye on every repository on Earth."],
+          { ghost: true, reach: 70, hint: "look at the Octocat statue" })
       ],
+      paint: (c) => {                                          // the CAFE MONA LISA sign on the café side of the screen wall
+        const x = SK.col(575) * TS - 2, y = 18.5 * TS;
+        c.save(); c.translate(x, y); c.rotate(-Math.PI / 2);
+        c.fillStyle = "#2e6e6a"; c.beginPath(); c.roundRect(-70, -14, 140, 18, 5); c.fill();
+        c.fillStyle = "#4fb3b0"; c.beginPath(); c.roundRect(-67, -12, 134, 14, 4); c.fill();
+        c.fillStyle = "#fff"; c.font = "900 10px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("CAFE MONA LISA", 0, -4.5);
+        c.restore();
+      },
       leave: () => enterPlace(HQ_STREET, 10 * TS, 7 * TS + 22, "down")
     };
 
@@ -1818,6 +1876,32 @@
         c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.arc(X + 18, Y + 18, 11, 0, 7); c.fill();
         c.fillStyle = "#d0d7de"; c.fillRect(X + 15, Y + 14, 2, 14);
         c.fillStyle = "#f6f8fa"; c.beginPath(); c.arc(X + 16, Y + 14, 11, 0, 7); c.fill(); c.strokeStyle = "#d0d7de"; c.lineWidth = 1.5; c.stroke();
+      },
+      statuefig(c, X, Y, W, H, t) {                            // the statue alone, standing on the traced sand bed
+        const cx = X + W / 2, by = Y + H - 4, glow = c.createRadialGradient(cx, by - 30, 4, cx, by - 30, 80);
+        glow.addColorStop(0, `rgba(88,166,255,${0.34 + 0.08 * Math.sin(t * 2)})`); glow.addColorStop(1, "rgba(88,166,255,0)");
+        c.fillStyle = glow; c.beginPath(); c.arc(cx, by - 30, 80, 0, 7); c.fill();
+        c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.ellipse(cx, by, 24, 7, 0, 0, 7); c.fill();
+        c.fillStyle = "#2b3440"; c.beginPath(); c.ellipse(cx, by - 14, 18, 18, 0, 0, 7); c.fill();
+        c.beginPath(); c.arc(cx, by - 46, 28, 0, 7); c.fill();
+        c.beginPath(); c.moveTo(cx - 26, by - 56); c.lineTo(cx - 24, by - 82); c.lineTo(cx - 8, by - 70); c.moveTo(cx + 26, by - 56); c.lineTo(cx + 24, by - 82); c.lineTo(cx + 8, by - 70); c.fill();
+        c.fillStyle = "#3d6fb0"; c.beginPath(); c.ellipse(cx - 11, by - 44, 8, 9, 0, 0, 7); c.ellipse(cx + 11, by - 44, 8, 9, 0, 0, 7); c.fill();
+        c.fillStyle = "#79c0ff"; c.beginPath(); c.arc(cx - 9, by - 47, 2.5, 0, 7); c.arc(cx + 13, by - 47, 2.5, 0, 7); c.fill();
+        c.fillStyle = "#2b3440"; c.beginPath(); c.ellipse(cx + 2, by - 20, 5, 12, 0.2, 0, 7); c.fill();
+      },
+      cafetable2(c, X, Y) {                                    // round white table with dark café chairs
+        const cx = X + 16, cy = Y + 16;
+        c.fillStyle = "#30363d"; for (const [dx, dy] of [[-17, 0], [17, 0], [0, -15], [0, 15]]) { c.beginPath(); c.roundRect(cx + dx - 6, cy + dy - 5, 12, 10, 3); c.fill(); }
+        c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.arc(cx + 2, cy + 3, 12, 0, 7); c.fill();
+        c.fillStyle = "#e6e9ec"; c.beginPath(); c.arc(cx, cy, 12, 0, 7); c.fill();
+        c.fillStyle = "#e3734b"; c.beginPath(); c.arc(cx, cy, 3, 0, 7); c.fill();
+      },
+      reception(c, X, Y, W, H) {                               // curved desk with plants, like the photo by the bikes
+        c.fillStyle = "rgba(0,0,0,.3)"; c.beginPath(); c.roundRect(X + 3, Y + 6, W, H, 14); c.fill();
+        c.fillStyle = "#6b6f63"; c.beginPath(); c.roundRect(X, Y + 6, W, H - 4, 14); c.fill();
+        c.fillStyle = "#d9c3a0"; c.beginPath(); c.roundRect(X, Y, W, 12, 8); c.fill();
+        c.fillStyle = "#2ea043"; for (const px of [8, 18, W - 14]) { c.beginPath(); c.arc(X + px, Y - 2, 8, 0, 7); c.fill(); }
+        c.fillStyle = "#30363d"; c.fillRect(X + W / 2 - 8, Y + 1, 16, 8); c.fillStyle = "#58a6ff"; c.fillRect(X + W / 2 - 6, Y + 2, 12, 5);
       },
       statue(c, X, Y, W, H, t) {                               // the giant Octocat on its bed of sand, lit in blue
         c.fillStyle = "#8a5a30"; c.beginPath(); c.roundRect(X - 4, Y + 4, W + 8, H, 14); c.fill();
