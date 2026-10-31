@@ -407,7 +407,8 @@
     }
     buildMap();
 
-    const solidAt = (tx, ty) => tx < 0 || ty < 0 || tx >= MW || ty >= MH || SOLID.has(grid[ty][tx]);
+    const BUS_STOP = { tx: 2, ty: 17 };                 // Laguna Street stop for the bus to GitHub HQ
+    const solidAt = (tx, ty) => tx < 0 || ty < 0 || tx >= MW || ty >= MH || SOLID.has(grid[ty][tx]) || (tx === BUS_STOP.tx && ty === BUS_STOP.ty);
     const hash = (x, y, n) => { let h = (x * 374761393 + y * 668265263 + n * 2147483647) >>> 0; h = (h ^ (h >>> 13)) * 1274126177 >>> 0; return (h ^ (h >>> 16)) / 4294967296; };
 
     /* ---------- Static map layer (drawn once) ---------- */
@@ -608,7 +609,7 @@
     /* ---------- State ---------- */
     let collected = new Set(), keys = {}, last = 0, toastT = 0, selected = null, time = 0;
     let scene = "title", battle = null, encounterCd = 0, pendingFoe = null;
-    let bag = { hotfix: 0, revert: 0 }, bossBeaten = false, saveT = 0, shinies = new Set(), trainersBeaten = new Set(), playTime = 0, talked = new Set(), gifts = new Set();
+    let bag = { hotfix: 0, revert: 0 }, bossBeaten = false, saveT = 0, shinies = new Set(), trainersBeaten = new Set(), playTime = 0, talked = new Set(), gifts = new Set(), hqPass = false;
     const player = { x: SPAWN.tx * TS + TS / 2, y: SPAWN.ty * TS + TS / 2, dir: "down", moving: false, w: 20, h: 12, speed: 150 };
     /* ---------- Battle data: GitHub types, moves and Octocat kits ---------- */
     const TYPES = {
@@ -662,7 +663,7 @@
     /* Progress (Octodex, items, boss, position) lives in this browser's localStorage */
     const SAVE_KEY = "fort-mason-octodex";
     function save() {
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, dex: [...collected], bag, boss: bossBeaten, at: [Math.round(player.x), Math.round(player.y)], shiny: [...shinies], trainers: [...trainersBeaten], time: Math.round(playTime), talked: [...talked], gifts: [...gifts] })); }
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, dex: [...collected], bag, boss: bossBeaten, at: [Math.round(player.x), Math.round(player.y)], shiny: [...shinies], trainers: [...trainersBeaten], time: Math.round(playTime), talked: [...talked], gifts: [...gifts], hq: hqPass })); }
       catch (e) { /* storage blocked: the game still works, it just won't remember */ }
     }
     /* Achievements, GitHub-profile style. They live outside the save so "Reset progress" keeps them */
@@ -678,7 +679,8 @@
       { id: "pair", icon: "👯", name: "Pair Extraordinaire", how: "Resolve the Merge Conflict with 2 Octocats or fewer." },
       { id: "yolo", icon: "🎲", name: "YOLO", how: "Resolve the Merge Conflict without items." },
       { id: "speed", icon: "⏱️", name: "Speedrunner", how: "Resolve the Merge Conflict in under 15 minutes." },
-      { id: "network", icon: "🤝", name: "Networker", how: "Talk to everyone inside the buildings." }
+      { id: "network", icon: "🤝", name: "Networker", how: "Talk to everyone inside the buildings." },
+      { id: "hq", icon: "🚌", name: "Field Trip", how: "Take the bus to GitHub HQ." }
     ];
     const META_KEY = "fort-mason-octodex-meta", achQueue = [];
     let meta = { ach: [], best: null, supers: 0 };
@@ -705,7 +707,7 @@
       shinies = new Set((d.shiny || []).filter((id) => collected.has(id)));
       trainersBeaten = new Set((d.trainers || []).filter((id) => TRAINERS.some((t) => t.id === id)));
       playTime = Number.isFinite(d.time) ? d.time : 0;
-      talked = new Set(d.talked || []); gifts = new Set(d.gifts || []);
+      talked = new Set(d.talked || []); gifts = new Set(d.gifts || []); hqPass = !!d.hq;
       const [x, y] = d.at || [];
       if (Number.isFinite(x) && Number.isFinite(y) && !blocked(x, y)) { player.x = x; player.y = y; }
     }
@@ -1156,7 +1158,8 @@
 
     /* ---------- Inside the buildings: one room per building, with people to talk to ---------- */
     // Rooms are listed in BUILDINGS order. Sizes and positions are in tiles; row 0-1 is the back wall, the door is the bottom middle tile.
-    const NPC = (id, name, x, y, pal, say) => ({ id, name, x, y, pal, say, pose: { dir: "down", moving: false } });
+    // opt: draw (a thing instead of a person), ghost (not drawn, not solid), reach (talk distance), r (solid radius), hint (prompt text)
+    const NPC = (id, name, x, y, pal, say, opt = {}) => ({ id, name, x, y, pal, say, pose: { dir: "down", moving: false }, ...opt });
     const lc = (t) => t.charAt(0).toLowerCase() + t.slice(1);
     function giveOnce(id, items) {
       if (gifts.has(id)) return false;
@@ -1228,21 +1231,31 @@
       scene = "inside"; roomT = 2.6; player.dir = "up";
       for (const n of def.npcs) n.pose.dir = "down";
     }
+    function enterPlace(def, x, y, dir) {                     // rooms that aren't one of the BUILDINGS (the HQ street and lobby)
+      closeTalk(); room = { def, i: -1, x, y }; scene = "inside"; roomT = 2.6; player.dir = dir; player.moving = false;
+      for (const n of def.npcs) n.pose.dir = "down";
+    }
     function exitRoom() {
+      if (room.def.leave) return room.def.leave();
       const b = BUILDINGS[room.i];
       closeTalk(); room = null; scene = "world"; encounterCd = 1;
       player.x = (b.x + b.w / 2) * TS; player.y = (b.y + b.h) * TS + 18; player.dir = "down";
     }
     function roomBlocked(x, y) {
       const r = room.def, W = r.w * TS, H = r.h * TS;
-      if (x < 10 || x > W - 10 || y - 10 < 2 * TS) return true;
-      if (y > H - 4 && Math.abs(x - roomDoorX(r)) > 16) return true;
+      if (r.grid) {
+        for (const [px, py] of [[x - 9, y - 1], [x + 9, y - 1], [x - 9, y - 10], [x + 9, y - 10]]) if (gridSolid(r, Math.floor(px / TS), Math.floor(py / TS))) return true;
+      } else {
+        if (x < 10 || x > W - 10 || y - 10 < 2 * TS) return true;
+        if (y > H - 4 && Math.abs(x - roomDoorX(r)) > 16) return true;
+      }
       for (const it of r.items) if (x + 9 > it.x * TS && x - 9 < (it.x + it.w) * TS && y > it.y * TS && y - 10 < (it.y + it.h) * TS) return true;
-      for (const n of r.npcs) if (Math.hypot(x - (n.x * TS + TS / 2), y - (n.y * TS + TS - 4)) < 18) return true;
+      for (const n of r.npcs) if (!n.ghost && Math.hypot(x - (n.x * TS + TS / 2), y - (n.y * TS + TS - 4)) < (n.r || 18)) return true;
       return false;
     }
     function updateInside(dt) {
       if (talk) { player.moving = false; return; }
+      gateMsgT -= dt;
       let dx = (keys[KEYS.right] || keys.ArrowRight ? 1 : 0) - (keys[KEYS.left] || keys.ArrowLeft ? 1 : 0) + pad.x;
       let dy = (keys[KEYS.down] || keys.ArrowDown ? 1 : 0) - (keys[KEYS.up] || keys.ArrowUp ? 1 : 0) + pad.y;
       dx = Math.max(-1, Math.min(1, dx)); dy = Math.max(-1, Math.min(1, dy));
@@ -1252,6 +1265,21 @@
       const n = Math.hypot(dx, dy), step = player.speed * dt, nx = room.x + dx / n * step, ny = room.y + dy / n * step;
       if (!roomBlocked(nx, room.y)) room.x = nx;
       if (!roomBlocked(room.x, ny)) room.y = ny;
+      if (room.def.grid) {                                     // grid rooms: doors are tiles, D leads out and U leads in
+        const r = room.def, row = (y) => r.grid[Math.floor(y / TS)] || "", col = Math.floor(room.x / TS), feet = Math.floor((room.y - 4) / TS);
+        const slide = (line, ch) => {                          // pressing towards a door slides you into it
+          const cols = [...(r.grid[line] || "")].map((c, i) => (c === ch ? i : -1)).filter((i) => i >= 0);
+          if (!cols.length) return;
+          const off = (cols[0] + cols[cols.length - 1] + 1) / 2 * TS - room.x;
+          if (Math.abs(off) > 1 && Math.abs(off) < 2.5 * TS) { const nx = room.x + Math.sign(off) * Math.min(Math.abs(off), step); if (!roomBlocked(nx, room.y)) room.x = nx; }
+        };
+        if (dy > 0) slide(feet + 1, "D"); if (dy < 0) slide(feet - 1, "U");
+        const here = row(room.y - 4)[Math.floor(room.x / TS)];
+        if (here === "D" && dy > 0) return r.leave();
+        if (here === "U" && dy < 0) return r.up();
+        if (dy < 0 && !hqPass && row(room.y - 14)[col] === "g" && gateMsgT <= 0) { toast("Security gate: ask the guards for a visitor badge."); gateMsgT = 3; }
+        return;
+      }
       const doorX = roomDoorX(room.def), off = doorX - room.x;
       if (dy > 0 && room.y > room.def.h * TS - 40 && Math.abs(off) < 2.5 * TS && off) {   // heading for the exit: slide into the doorway
         const nx2 = room.x + Math.sign(off) * Math.min(Math.abs(off), step);
@@ -1260,8 +1288,8 @@
       if (room.y > room.def.h * TS + 2) exitRoom();             // out through the door
     }
     function nearNpc() {
-      let best = null, bd = 54;
-      for (const n of room.def.npcs) { const d = Math.hypot(room.x - (n.x * TS + TS / 2), room.y - (n.y * TS + TS - 4)); if (d < bd) { bd = d; best = n; } }
+      let best = null, bd = Infinity;
+      for (const n of room.def.npcs) { const d = Math.hypot(room.x - (n.x * TS + TS / 2), room.y - (n.y * TS + TS - 4)); if (d < (n.reach || 54) && d < bd) { bd = d; best = n; } }
       return best;
     }
     function tryTalk() {
@@ -1270,7 +1298,8 @@
       const dx = room.x - (n.x * TS + TS / 2), dy = room.y - (n.y * TS + TS - 4), side = Math.abs(dx) > Math.abs(dy);
       n.pose.dir = side ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
       player.dir = side ? (dx > 0 ? "left" : "right") : (dy > 0 ? "up" : "down"); player.moving = false; keys = {};
-      talk = { n, lines: n.say(), i: 0, typing: false };
+      const said = n.say();                                    // a list of lines, or { lines, then } to do something afterwards
+      talk = { n, lines: Array.isArray(said) ? said : said.lines, then: said.then, i: 0, typing: false };
       $("talkWho").textContent = n.name; $("talk").hidden = false; showLine();
       if (!talked.has(n.id)) {
         talked.add(n.id); save();
@@ -1288,7 +1317,7 @@
       if (!talk) return;
       if (talk.typing) finishLine();
       else if (++talk.i < talk.lines.length) showLine();
-      else closeTalk();
+      else { const then = talk.then; closeTalk(); if (then) then(); }
     }
     function closeTalk() {
       clearInterval(talkTimer); talk = null; $("talk").hidden = true;
@@ -1298,6 +1327,7 @@
 
     function drawItem(c, it) {
       const X = it.x * TS, Y = it.y * TS, W = it.w * TS, H = it.h * TS, t = time;
+      if (HQ_ART[it.kind]) return HQ_ART[it.kind](c, X, Y, W, H, t);
       c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(X + 4, Y + 6, W, H);
       const box = (x, y, w, h, fill) => { c.fillStyle = fill; c.fillRect(x, y, w, h); };
       if (it.kind === "desk" || it.kind === "table" || it.kind === "counter") {
@@ -1369,20 +1399,26 @@
       });
     }
     function renderInside() {
-      const r = room.def, W = r.w * TS, H = r.h * TS, ox = Math.round((VW - W) / 2), oy = Math.round((VH - H) / 2) + 6, c = ctx;
+      const r = room.def, W = r.w * TS, H = r.h * TS, c = ctx;   // rooms bigger than the screen scroll with you
+      const ox = W <= VW ? Math.round((VW - W) / 2) : Math.round(Math.max(VW - W, Math.min(0, VW / 2 - room.x)));
+      const oy = H <= VH - 12 ? Math.round((VH - H) / 2) + 6 : Math.round(Math.max(VH - H, Math.min(0, VH / 2 - room.y + 20)));
       c.fillStyle = "#070a12"; c.fillRect(0, 0, VW, VH);
       c.save(); c.translate(ox, oy);
       c.fillStyle = "#0b0f19"; c.fillRect(-8, -8, W + 16, H + 16);
-      for (let y = 2; y < r.h; y++) for (let x = 0; x < r.w; x++) { c.fillStyle = r.floor[(x + y) % 2]; c.fillRect(x * TS, y * TS, TS, TS); }
-      drawRoomWall(c, r, W);
-      const dx = roomDoorX(r);                                  // door mat
-      c.fillStyle = "#238636"; c.fillRect(dx - TS / 2 + 2, H - 14, TS - 4, 14); c.fillStyle = "#0b0f19"; c.fillRect(dx - TS / 2, H, TS, 8);
-      c.fillStyle = "#7ee787"; c.font = "900 9px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("EXIT", dx, H - 7);
-      for (const it of r.items) drawItem(c, it);
+      if (r.grid) { drawGridRoom(c, r); if (r.paint) r.paint(c); }
+      else {
+        for (let y = 2; y < r.h; y++) for (let x = 0; x < r.w; x++) { c.fillStyle = r.floor[(x + y) % 2]; c.fillRect(x * TS, y * TS, TS, TS); }
+        drawRoomWall(c, r, W);
+        const dx = roomDoorX(r);                                // door mat
+        c.fillStyle = "#238636"; c.fillRect(dx - TS / 2 + 2, H - 14, TS - 4, 14); c.fillStyle = "#0b0f19"; c.fillRect(dx - TS / 2, H, TS, 8);
+        c.fillStyle = "#7ee787"; c.font = "900 9px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("EXIT", dx, H - 7);
+      }
       const near = !talk && nearNpc();
-      const people = r.npcs.map((n) => ({ y: n.y * TS + TS - 4, draw: () => drawPlayer(c, n.x * TS + TS / 2, n.y * TS + TS - 4, time + n.x, n.pose, n.pal) }));
+      const people = r.items.map((it) => ({ y: (it.y + it.h) * TS - 2, draw: () => drawItem(c, it) }));   // furniture and people sorted by depth
+      for (const n of r.npcs) if (!n.ghost) people.push({ y: n.y * TS + TS - 4, draw: () => n.draw ? n.draw(c, n.x * TS + TS / 2, n.y * TS + TS - 4) : drawPlayer(c, n.x * TS + TS / 2, n.y * TS + TS - 4, time + n.x, n.pose, n.pal) });
       people.push({ y: room.y, draw: () => drawPlayer(c, room.x, room.y, time) });
       people.sort((a, b) => a.y - b.y).forEach((p) => p.draw());
+      if (r.after) r.after(c);
       if (near) {                                               // speech bubble over whoever you can talk to
         const bx = near.x * TS + TS / 2, by = near.y * TS - 30 + Math.sin(time * 6) * 2;
         c.fillStyle = "#fff"; c.strokeStyle = "#0b0f19"; c.lineWidth = 2; c.beginPath(); c.roundRect(bx - 13, by - 10, 26, 18, 6); c.fill(); c.stroke();
@@ -1398,13 +1434,416 @@
         c.fillStyle = "#58a6ff"; c.fillRect(bx + 8, 20, 4, 22);
         c.fillStyle = "#e6edf3"; c.textAlign = "left"; c.textBaseline = "middle"; c.fillText(r.name, bx + 20, 31); c.restore();
       }
-      if (near) {
-        const hint = "A / " + keyLabel(KEYS.talk) + ": talk to " + near.name;
-        c.font = "800 12px ui-monospace, Menlo, monospace"; const w = c.measureText(hint).width + 24;
-        c.fillStyle = "rgba(13,17,23,.88)"; c.beginPath(); c.roundRect(VW / 2 - w / 2, VH - 34, w, 24, 12); c.fill();
-        c.fillStyle = "#7ee787"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(hint, VW / 2, VH - 21.5);
+      if (near) promptPill("A / " + keyLabel(KEYS.talk) + ": " + (near.hint || "talk to " + near.name));
+    }
+    function promptPill(hint) {
+      const c = ctx; c.font = "800 12px ui-monospace, Menlo, monospace"; const w = c.measureText(hint).width + 24;
+      c.fillStyle = "rgba(13,17,23,.88)"; c.beginPath(); c.roundRect(VW / 2 - w / 2, VH - 34, w, 24, 12); c.fill();
+      c.fillStyle = "#7ee787"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(hint, VW / 2, VH - 21.5);
+    }
+
+    /* ---------- The bus to GitHub HQ, 88 Colin P Kelly Street ---------- */
+    const BUS_TIME = 4.4;
+    let bus = null, gateMsgT = 0;
+    const nearBusStop = () => scene === "world" && Math.hypot(player.x - (BUS_STOP.tx * TS + TS / 2), player.y - (BUS_STOP.ty * TS + TS - 2)) < 46;
+    function rideBus(to) {
+      closeTalk(); room = null; scene = "bus"; bus = { to, t: 0 }; keys = {}; player.moving = false;
+    }
+    function skipBus() { if (bus && bus.t > 0.5 && bus.t < BUS_TIME - 0.5) bus.t = BUS_TIME - 0.45; }
+    function arriveBus() {
+      const to = bus.to; bus = null;
+      if (to === "hq") { enterPlace(HQ_STREET, 5 * TS, 9 * TS + 20, "up"); room.busT = 2.6; unlock("hq"); }
+      else {
+        scene = "world"; player.x = (BUS_STOP.tx + 1) * TS + 16; player.y = (BUS_STOP.ty + 1) * TS + 20; player.dir = "down"; encounterCd = 1.5;
       }
     }
+    function grantBadge() {
+      if (hqPass) return;
+      hqPass = true; save(); Music.sfx("collect"); toast("🪪 Visitor badge: the security gates are open", 3);
+    }
+
+    function drawBusStop(c, x, y) {
+      c.fillStyle = "rgba(0,0,0,.3)"; c.beginPath(); c.ellipse(x + 8, y, 20, 5, 0, 0, 7); c.fill();
+      c.fillStyle = "#6e4428"; c.fillRect(x + 6, y - 12, 24, 5); c.fillRect(x + 8, y - 7, 3, 7); c.fillRect(x + 25, y - 7, 3, 7);   // bench
+      c.fillStyle = "#8b949e"; c.fillRect(x - 2, y - 62, 4, 62);
+      c.fillStyle = "#fff"; c.beginPath(); c.arc(x, y - 68, 13, 0, 7); c.fill();
+      c.fillStyle = "#1f6feb"; c.beginPath(); c.arc(x, y - 68, 11, 0, 7); c.fill();
+      c.fillStyle = "#fff"; c.beginPath(); c.roundRect(x - 6, y - 74, 12, 10, 2); c.fill();
+      c.fillStyle = "#1f6feb"; c.fillRect(x - 4, y - 72, 8, 3); c.fillStyle = "#fff"; c.fillRect(x - 5, y - 63, 3, 2); c.fillRect(x + 2, y - 63, 3, 2);
+      c.fillStyle = "#0d1117"; c.beginPath(); c.roundRect(x - 15, y - 52, 30, 12, 3); c.fill();
+      c.fillStyle = "#f2cc60"; c.font = "800 8px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("BUS", x, y - 45.5);
+    }
+    function drawBus(c, x, y, s, t, label) {                  // side view, facing right, 150 × 60 at scale 1
+      c.save(); c.translate(x, y); c.scale(s, s);
+      c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.ellipse(75, 60, 72, 5, 0, 0, 7); c.fill();
+      c.fillStyle = "#e9edf1"; c.beginPath(); c.roundRect(0, 0, 150, 52, 10); c.fill();
+      c.fillStyle = "#d1242f"; c.fillRect(0, 32, 150, 10);
+      c.fillStyle = "#1f2a3a"; c.beginPath(); c.roundRect(8, 8, 98, 19, 3); c.fill();
+      c.fillStyle = "rgba(255,255,255,.25)"; for (let k = 0; k < 5; k++) c.fillRect(12 + k * 19, 10, 6, 3);
+      c.fillStyle = "#e9edf1"; for (let k = 1; k < 5; k++) c.fillRect(8 + k * 19.6, 8, 2, 19);
+      c.fillStyle = "#2c3e55"; c.beginPath(); c.roundRect(128, 6, 20, 26, 4); c.fill(); c.fillRect(110, 12, 14, 32);
+      c.fillStyle = "#e9edf1"; c.fillRect(116, 12, 2, 32);
+      c.fillStyle = "#111"; c.fillRect(104, 0.5, 44, 7);
+      c.fillStyle = "#ffa657"; c.font = "800 5.5px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(label || "GITHUB HQ", 126, 4.3);
+      c.fillStyle = "#fff"; c.beginPath(); c.arc(60, 37, 4, 0, 7); c.fill();
+      c.fillStyle = "#fff3b0"; c.fillRect(146, 36, 4, 5);
+      for (const wx of [30, 118]) {
+        c.fillStyle = "#0d1117"; c.beginPath(); c.arc(wx, 51, 9, 0, 7); c.fill();
+        c.fillStyle = "#8b949e"; c.beginPath(); c.arc(wx, 51, 4, 0, 7); c.fill();
+        c.strokeStyle = "#30363d"; c.lineWidth = 1.2; c.beginPath();
+        for (let k = 0; k < 3; k++) { const a = t * 14 + k * 2.1; c.moveTo(wx, 51); c.lineTo(wx + Math.cos(a) * 8, 51 + Math.sin(a) * 8); }
+        c.stroke();
+      }
+      c.restore();
+    }
+    function renderBus() {                                     // the ride: San Francisco slides past at dusk
+      const c = ctx, t = bus.t, speed = 420, toHQ = bus.to === "hq";
+      const sky = c.createLinearGradient(0, 0, 0, 320); sky.addColorStop(0, "#1a2150"); sky.addColorStop(0.6, "#6b4a8a"); sky.addColorStop(1, "#f19a6b");
+      c.fillStyle = sky; c.fillRect(0, 0, VW, VH);
+      c.fillStyle = "rgba(255,214,140,.9)"; c.beginPath(); c.arc(500, 250, 38, 0, 7); c.fill();
+      const layer = (par, base, col, n, minH, maxH, lights) => {
+        const span = 1280, off = (t * speed * par) % span;
+        for (let rep = -1; rep < 2; rep++) {
+          let x = rep * span - off;
+          for (let k = 0; x < (rep + 1) * span - off; k++) {
+            const w = 50 + hash(k, n, 1) * 70, h = minH + hash(k, n, 2) * (maxH - minH);
+            if (x + w > 0 && x < VW) {
+              c.fillStyle = col; c.fillRect(x, base - h, w - 5, h);
+              if (lights) for (let wy = base - h + 8; wy < base - 10; wy += 12) for (let wx = x + 6; wx < x + w - 12; wx += 11)
+                if (hash(Math.floor(wx), Math.floor(wy), n) > 0.55) { c.fillStyle = "rgba(255,226,140,.85)"; c.fillRect(wx, wy, 5, 6); }
+            }
+            x += w;
+          }
+          if (par < 0.3) {                                     // Transamerica Pyramid and Coit Tower in the far layer
+            const px = rep * span - off + 380;
+            c.fillStyle = col; c.beginPath(); c.moveTo(px - 26, base); c.lineTo(px, base - 205); c.lineTo(px + 26, base); c.fill();
+            const tx = rep * span - off + 930; c.fillRect(tx - 8, base - 150, 16, 150); c.fillRect(tx - 11, base - 158, 22, 10);
+          }
+        }
+      };
+      layer(0.15, 318, "#3a3466", 3, 60, 150, false);
+      layer(0.45, 318, "#262744", 5, 50, 120, true);
+      c.fillStyle = "#5d6168"; c.fillRect(0, 318, VW, 16); c.fillStyle = "#8b9096"; c.fillRect(0, 330, VW, 4);
+      for (let x = -((t * speed) % 260); x < VW; x += 260) {   // street lamps
+        c.fillStyle = "#30363d"; c.fillRect(x, 230, 4, 90); c.fillRect(x, 230, 18, 4);
+        const glow = c.createRadialGradient(x + 18, 238, 2, x + 18, 238, 26); glow.addColorStop(0, "rgba(255,240,170,.9)"); glow.addColorStop(1, "rgba(255,240,170,0)");
+        c.fillStyle = glow; c.beginPath(); c.arc(x + 18, 238, 26, 0, 7); c.fill();
+      }
+      c.fillStyle = "#2b2f36"; c.fillRect(0, 334, VW, VH - 334);
+      c.fillStyle = "#f2cc60"; for (let x = -((t * speed) % 80); x < VW; x += 80) c.fillRect(x, 400, 40, 4);
+      c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 2;
+      for (let k = 0; k < 5; k++) { const ly = 280 + k * 14, lx = 120 - ((t * 600 + k * 70) % 140); c.beginPath(); c.moveTo(lx, ly); c.lineTo(lx + 40, ly); c.stroke(); }
+      drawBus(c, 160, 262 + (settings.calm ? 0 : Math.sin(t * 20) * 1.2), 2, t, toHQ ? "GITHUB HQ" : "FORT MASON");
+      c.fillStyle = "rgba(13,17,23,.88)"; c.strokeStyle = "#e6edf3"; c.lineWidth = 2; c.beginPath(); c.roundRect(12, 12, 330, 52, 8); c.fill(); c.stroke();
+      c.fillStyle = "#58a6ff"; c.fillRect(20, 20, 4, 36);
+      c.textAlign = "left"; c.textBaseline = "middle";
+      c.fillStyle = "#8b949e"; c.font = "800 10px ui-monospace, Menlo, monospace"; c.fillText("NEXT STOP", 32, 28);
+      c.fillStyle = "#e6edf3"; c.font = "bold 15px ui-monospace, Menlo, monospace"; c.fillText(toHQ ? "GitHub HQ · 88 Colin P Kelly St" : "Fort Mason · Laguna Street", 32, 47);
+      c.fillStyle = "rgba(230,237,243,.7)"; c.font = "700 11px ui-monospace, monospace"; c.textAlign = "right"; c.fillText("A / Enter: skip", VW - 14, VH - 14);
+      const a = Math.max(0, Math.min(1, t / 0.45, (BUS_TIME - t) / 0.45));
+      if (a < 1) { c.fillStyle = `rgba(0,0,0,${1 - a})`; c.fillRect(0, 0, VW, VH); }
+    }
+
+    // Grid rooms: "#" brick, "w" white partition, "." polished concrete, "," wood, "D" way out, "U" way in,
+    // "g" security gate (open with a visitor badge), "X" staff door, "F" facade, "s" sidewalk, "r" road.
+    const gridSolid = (r, tx, ty) => { const ch = (r.grid[ty] || "")[tx]; return ch === undefined || "#wXrF".includes(ch) || (ch === "g" && !hqPass); };
+    function drawGridRoom(c, r) {
+      for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) {
+        const ch = r.grid[y][x], X = x * TS, Y = y * TS, below = (r.grid[y + 1] || "")[x];
+        const box = (dx, dy, w, h, f) => { c.fillStyle = f; c.fillRect(X + dx, Y + dy, w, h); };
+        const face = below !== undefined && !"#wF".includes(below);
+        if (".gDX".includes(ch)) {                             // polished concrete
+          box(0, 0, TS, TS, hash(x, y, 3) < 0.5 ? "#9aa1a6" : "#959ca1");
+          box(hash(x, y, 4) * 20, hash(x, y, 5) * 26, 10, 3, "rgba(255,255,255,.07)");
+        }
+        if (ch === ",") { box(0, 0, TS, TS, y % 2 ? "#c9a273" : "#c29b6c"); for (let k = 8; k < TS; k += 8) box(0, k, TS, 1, "rgba(90,60,30,.25)"); box((y * 13) % TS, 0, 1, TS, "rgba(90,60,30,.25)"); }
+        else if (ch === "#") {
+          if (face) {
+            box(0, 0, TS, TS, "#9a5a44");
+            for (let k = 0; k < 4; k++) { box(0, k * 8 + 7, TS, 1, "#c9b8a8"); box(((k + x) % 2) * 12 + 6, k * 8, 1, 7, "#c9b8a8"); box(((k + x) % 2) * 12 + 22, k * 8, 1, 7, "#c9b8a8"); }
+            box(0, TS - 3, TS, 3, "rgba(0,0,0,.25)");
+          } else { box(0, 0, TS, TS, "#3a2b26"); box(0, 0, TS, 2, "#4d3a33"); }
+        } else if (ch === "w") {
+          if (face) { box(0, 0, TS, TS, "#e6e9ec"); box(0, 0, TS, 3, "#f6f8fa"); box(0, TS - 4, TS, 4, "rgba(0,0,0,.18)"); }
+          else { box(0, 0, TS, TS, "#c4cad0"); box(0, 0, TS, 2, "#dde2e6"); }
+        } else if (ch === "D") {
+          box(2, 4, TS - 4, TS - 4, "#238636"); box(2, 4, TS - 4, 3, "#3fb950");
+          if ((r.grid[y][x + 1]) === "D") { c.fillStyle = "#d2ffd8"; c.font = "900 9px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("EXIT", X + TS, Y + 19); }
+        } else if (ch === "g") {                               // turnstile: glass flaps meet in the middle until you have a badge
+          box(0, 6, 5, 22, "#6e7681"); box(TS - 5, 6, 5, 22, "#6e7681");
+          c.fillStyle = hqPass ? "#3fb950" : "#f85149"; c.fillRect(X + 1, Y + 8, 3, 3); c.fillRect(X + TS - 4, Y + 8, 3, 3);
+          if (hqPass) { box(5, 10, 4, 14, "rgba(160,210,255,.55)"); box(TS - 9, 10, 4, 14, "rgba(160,210,255,.55)"); }
+          else { box(5, 12, 11, 10, "rgba(160,210,255,.55)"); box(16, 12, 11, 10, "rgba(160,210,255,.55)"); box(5, 12, 22, 2, "#c9e6ff"); }
+        } else if (ch === "X") {
+          box(0, 0, TS, TS, "#4d5b69"); box(4, 3, TS - 8, TS - 6, "rgba(160,210,255,.4)"); box(TS / 2 - 1, 3, 2, TS - 6, "#4d5b69");
+          c.save(); c.translate(X + 16, Y + 16); c.rotate(-Math.PI / 2); c.fillStyle = "#ff7b72"; c.font = "900 7px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("STAFF", 0, 0); c.restore();
+        } else if (ch === "s") { box(0, 0, TS, TS, "#b4b8bc"); box(0, 0, TS, 1, "rgba(0,0,0,.12)"); box(0, 0, 1, TS, "rgba(0,0,0,.12)"); }
+        else if (ch === "r") {
+          box(0, 0, TS, TS, "#3b4047");
+          if ((r.grid[y - 1] || "")[x] !== "r") { box(0, 0, TS, 5, "#8d9297"); box(0, 5, TS, 2, "#2d3138"); }
+          if ((r.grid[y + 1] || "")[x] === "r" && (r.grid[y - 1] || "")[x] === "r" && x % 2) box(0, TS - 2, TS, 3, "#f2cc60");
+        } else if (ch === "F" || ch === "U") box(0, 0, TS, TS, "#6b7178");
+      }
+    }
+    function drawFacade(c) {                                   // 88 Colin P Kelly Street, after the street-view photo
+      const W = 20 * TS, H = 7 * TS;
+      c.fillStyle = "#6b7178"; c.fillRect(0, 0, W, H);
+      c.strokeStyle = "rgba(0,0,0,.16)"; c.lineWidth = 1;
+      for (let y = 0; y < H; y += 16) {
+        c.beginPath(); c.moveTo(0, y + 0.5); c.lineTo(W, y + 0.5); c.stroke();
+        for (let x = (y / 16) % 2 ? 0 : 24; x < W; x += 48) { c.beginPath(); c.moveTo(x + 0.5, y); c.lineTo(x + 0.5, y + 16); c.stroke(); }
+      }
+      const band = (y) => { c.fillStyle = "#80878f"; c.fillRect(0, y, W, 6); c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(0, y + 6, W, 2); };
+      band(58); band(126);
+      const win = (x, y, w, h, arch) => {
+        const shape = (pad) => { c.beginPath(); if (arch) { c.moveTo(x - pad, y + h + pad); c.lineTo(x - pad, y + w / 2); c.arc(x + w / 2, y + w / 2, w / 2 + pad, Math.PI, 0); c.lineTo(x + w + pad, y + h + pad); c.closePath(); } else c.rect(x - pad, y - pad, w + pad * 2, h + pad * 2); };
+        c.fillStyle = "#4b5056"; shape(3); c.fill();
+        const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, "#ffe9a8"); g.addColorStop(1, "#d89b45");
+        c.fillStyle = g; shape(0); c.fill();
+        c.fillStyle = "#3b3f45"; c.fillRect(x + w / 2 - 1, y, 2, h); c.fillRect(x, y + h * 0.55, w, 2);
+      };
+      for (const x of [24, 104, 184, 410, 490, 570]) win(x, 8, 46, 42, false);
+      win(40, 146, 44, 66, true); win(120, 146, 44, 66, true);
+      c.fillStyle = "#4b5056"; c.beginPath(); c.moveTo(522, 214); c.lineTo(522, 160); c.arc(562, 160, 40, Math.PI, 0); c.lineTo(602, 214); c.closePath(); c.fill();
+      c.fillStyle = "#c9cdd1"; for (let y = 132; y < 212; y += 6) { const half = y < 160 ? Math.sqrt(Math.max(0, 36 * 36 - (160 - y) ** 2)) : 36; c.fillRect(562 - half, y, half * 2, 3); }
+      c.fillStyle = "#565b61"; c.fillRect(0, H - 10, W, 10);
+      c.fillStyle = "#9aa0a6"; c.fillRect(246, 168, 5, 56);
+      c.fillStyle = "#2b2f33"; c.beginPath(); c.arc(320, 94, 25, 0, 7); c.fill();          // the Octocat roundel
+      c.fillStyle = "#b8783a"; c.beginPath(); c.arc(320, 94, 21, 0, 7); c.fill();
+      c.fillStyle = "#1b1f24"; c.beginPath(); c.arc(320, 90, 10, 0, 7); c.fill();
+      c.beginPath(); c.moveTo(311, 86); c.lineTo(310, 76); c.lineTo(317, 82); c.moveTo(329, 86); c.lineTo(330, 76); c.lineTo(323, 82); c.fill();
+      c.beginPath(); c.roundRect(313, 96, 14, 14, 4); c.fill();
+      c.fillStyle = "rgba(0,0,0,.3)"; c.fillRect(258, 166, 140, 8);                     // awning
+      c.fillStyle = "#c9cdd1"; c.fillRect(256, 150, 140, 16); c.fillStyle = "#eef1f3"; c.fillRect(256, 150, 140, 3);
+      c.fillStyle = "#30363d"; c.font = "800 9px ui-monospace, monospace"; c.textAlign = "left"; c.textBaseline = "middle"; c.fillText("88 COLIN P KELLY", 262, 159);
+      c.fillStyle = "#aeb4ba"; c.fillRect(282, 170, 92, 54);                            // glass doors, lit from inside
+      const glass = c.createLinearGradient(0, 174, 0, 224); glass.addColorStop(0, "#f6e3b4"); glass.addColorStop(1, "#d9b77a");
+      c.fillStyle = glass; c.fillRect(286, 174, 32, 50); c.fillRect(322, 174, 32, 50); c.fillRect(358, 174, 13, 50);
+      c.fillStyle = "#6e7681"; c.fillRect(314, 194, 2, 12); c.fillRect(324, 194, 2, 12);
+      c.fillStyle = "#30363d"; c.fillRect(300, 180, 30, 14); c.fillStyle = "#79c0ff"; c.fillRect(302, 182, 26, 10);   // the screen seen through the glass
+    }
+
+    const GUARD = { pack: "#0d1117", arm: "#1b2a4a", hood: "#1f3b73", stripe: "#f2cc60", skin: "#e0ac69", hair: "#0d1117", cap: "#0d1117", visor: "#161b22" };
+    const GUARD2 = { ...GUARD, skin: "#8d5524", hair: "#3b2416" };
+    const HUBBER = (hood, skin, hair, cap) => ({ pack: "#30363d", arm: hood, hood, stripe: "#f0f6fc", skin, hair, cap, visor: "#161b22" });
+    const HQ_STREET = {
+      name: "88 Colin P Kelly St", w: 20, h: 14,
+      grid: [...Array(6).fill("F".repeat(20)), "F".repeat(9) + "UU" + "F".repeat(9), ...Array(4).fill("s".repeat(20)), ...Array(3).fill("r".repeat(20))],
+      items: [{ kind: "pole", x: 16, y: 7, w: 1, h: 1 }],
+      npcs: [NPC("busstop", "the bus stop", 3, 8, null, () => ({ lines: ["Bus stop: GitHub HQ ⇄ Fort Mason.", "Here comes the bus. All aboard for Fort Mason!"], then: () => rideBus("fm") }),
+        { draw: (c, x, y) => drawBusStop(c, x, y), hint: "take the bus back to Fort Mason", r: 14, reach: 50 })],
+      paint: drawFacade,
+      after: (c) => {                                          // the bus that dropped you off pulls away
+        if (!(room.busT > 0)) return;
+        room.busT -= frameDt; const k = Math.max(0, 1.6 - room.busT);
+        drawBus(c, 30 + k * k * 300, 11 * TS + 10, 1, time + k * 4, "FORT MASON");
+      },
+      up: () => enterPlace(HQ, 27 * TS, 22 * TS + 16, "up")
+    };
+    function hqGrid() {                                        // 36 × 24, the street is at the bottom
+      const W = 36, H = 24, g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (y < 2 || x === 0 || x === W - 1 || y === H - 1 ? "#" : ".")));
+      const set = (x, y, w, h, ch) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) g[j][i] = ch; };
+      set(18, 15, 17, 1, "w"); set(18, 15, 1, 8, "w");         // lobby walls; the left one carries the giant screen
+      set(27, 15, 3, 1, "g");                                  // the three security gates
+      set(26, 23, 2, 1, "D");                                  // main entrance
+      set(3, 6, 13, 4, ",");                                   // stage floor in front of the bleachers
+      set(0, 12, 1, 2, "X"); set(1, 12, 1, 2, "g");            // door 2 and its two gates
+      return g.map((r) => r.join(""));
+    }
+    const HQ = {
+      name: "GitHub HQ", w: 36, h: 24, grid: hqGrid(),
+      items: [
+        // lobby: giant screen on the left wall, sofa against the front wall, armchairs and a coffee table, guard post on the right
+        { kind: "gscreen", x: 19, y: 16, w: 1, h: 4 }, { kind: "sofa", x: 20, y: 22, w: 4, h: 1 },
+        { kind: "armchair", x: 20, y: 19, w: 1, h: 1 }, { kind: "armchair", x: 23, y: 19, w: 1, h: 1 }, { kind: "ctable", x: 21, y: 20, w: 2, h: 1 },
+        { kind: "guardpost", x: 31, y: 16, w: 1, h: 7 }, { kind: "plant", x: 19, y: 22, w: 1, h: 1 }, { kind: "plant", x: 30, y: 16, w: 1, h: 1 },
+        // Café Mona Lisa, left of the screen wall
+        { kind: "cafeback", x: 11, y: 16, w: 7, h: 1 }, { kind: "cafecounter", x: 11, y: 18, w: 7, h: 1 },
+        { kind: "cafetable", x: 12, y: 20, w: 1, h: 1 }, { kind: "cafetable", x: 15, y: 20, w: 1, h: 1 },
+        // round tables, bikes, door 2's security post
+        { kind: "roundtable", x: 2, y: 16, w: 2, h: 2 }, { kind: "roundtable", x: 5, y: 16, w: 2, h: 2 },
+        { kind: "roundtable", x: 2, y: 19, w: 2, h: 2 }, { kind: "roundtable", x: 5, y: 19, w: 2, h: 2 },
+        { kind: "bikes", x: 8, y: 21, w: 2, h: 1 }, { kind: "guardpost", x: 2, y: 10, w: 2, h: 1 },
+        // bleachers, podium and the presentation screen facing them
+        { kind: "bleachers", x: 3, y: 2, w: 13, h: 4 }, { kind: "podium", x: 9, y: 7, w: 1, h: 1 }, { kind: "pscreen", x: 5, y: 9, w: 9, h: 1 },
+        // lounge behind the bleachers, the statue facing the gates, desks for Hubbers
+        { kind: "bench", x: 19, y: 2, w: 7, h: 1 }, { kind: "whitetable", x: 19, y: 5, w: 3, h: 1 }, { kind: "whitetable", x: 23, y: 5, w: 3, h: 1 },
+        { kind: "smalltable", x: 20, y: 8, w: 1, h: 1 }, { kind: "smalltable", x: 24, y: 8, w: 1, h: 1 },
+        { kind: "statue", x: 27, y: 10, w: 3, h: 3 },
+        { kind: "desk", x: 28, y: 3, w: 3, h: 1 }, { kind: "desk", x: 32, y: 3, w: 2, h: 1 }, { kind: "desk", x: 28, y: 6, w: 3, h: 1 }, { kind: "desk", x: 32, y: 6, w: 2, h: 1 },
+        // wooden pillars and plants, like the photos
+        { kind: "pillar", x: 17, y: 7, w: 1, h: 1 }, { kind: "pillar", x: 17, y: 12, w: 1, h: 1 }, { kind: "pillar", x: 10, y: 13, w: 1, h: 1 },
+        { kind: "pillar", x: 23, y: 12, w: 1, h: 1 }, { kind: "pillar", x: 33, y: 12, w: 1, h: 1 },
+        { kind: "plant", x: 1, y: 2, w: 1, h: 1 }, { kind: "plant", x: 17, y: 2, w: 1, h: 1 }, { kind: "plant", x: 26, y: 2, w: 1, h: 1 }, { kind: "plant", x: 34, y: 9, w: 1, h: 1 }
+      ],
+      npcs: [
+        NPC("gabe", "Guard Gabe", 32, 18, GUARD, () => hqPass ? ["Badge looks good. The Octocat statue is just past the gates.", "Door 2 on the far side is for staff only."]
+          : { lines: ["Welcome to GitHub HQ, 88 Colin P Kelly Street!", "Past those security gates is the Hubbers' floor. Visitors need a badge.", "Here's yours. The gates will open for you now. (Visitor badge)"], then: grantBadge }, { reach: 80 }),
+        NPC("rosa", "Guard Rosa", 32, 20, GUARD2, () => hqPass ? ["See the giant screen on the wall? It shows GitHub activity happening live, all over the world.", "Every push, every pull request, every star."]
+          : { lines: ["Checking in? Visitors get a badge at this desk.", "There you go. Enjoy your visit! (Visitor badge)"], then: grantBadge }, { reach: 80 }),
+        NPC("vic", "Visitor Vic", 25, 20, HUBBER("#bf4b8a", "#f5c9a6", "#d29922", "#db61a2"), () => ["I'm here for my interview. Do I look nervous?", "I practised my git rebase all night."]),
+        NPC("lisa", "Barista Lisa", 14, 17, HUBBER("#4fb3b0", "#e0ac69", "#0d1117", "#0d1117"), () =>
+          giveOnce("lisa", { hotfix: 1 }) ? ["Welcome to Café Mona Lisa!", "One cold brew, on the house. Works just like a Hotfix. (+1 Hotfix)"]
+            : ["Back for a refill? The cold brew is self-serve, I'm only here for the latte art.", "That Octocat surfing on our sign? Very California."], { reach: 80 }),
+        NPC("ben", "Hubber Ben", 8, 19, HUBBER("#3fb950", "#f5c9a6", "#b62324", "#238636"), () => ["I bike here every morning. San Francisco hills build character.", "The rack fills up fast, so I come early."]),
+        NPC("theo", "Guard Theo", 4, 11, GUARD2, () => ["This is the second security post. Door 2 is staff only.", "Visitors come and go through the main entrance on Colin P Kelly Street."]),
+        NPC("priya", "Speaker Priya", 10, 7, HUBBER("#8957e5", "#8d5524", "#0d1117", "#24292f"), () => ["Welcome to today's talk: Building the open future of AI.", "Open source is how we build it, together. Grab a seat on the bleachers!",
+          collected.size === OCTOCATS.length ? "And a round of applause for the trainer who caught all twelve Octocats!" : "Psst: there are still Octocats to catch back at Fort Mason."]),
+        NPC("hana", "Hubber Hana", 22, 7, HUBBER("#1f6feb", "#e0ac69", "#3b2416", "#58a6ff"), () => ["This lounge is my favourite spot to code. Comfy benches, good coffee.", "On meetup nights, the bleachers next door turn into a stage."]),
+        NPC("kim", "Hubber Kim", 30, 4, HUBBER("#f0883e", "#f5c9a6", "#0d1117", "#bd561d"), () => ["Shh, I'm shipping a feature.", "...Merged! Want to see it? Sorry, it's a secret until Universe."]),
+        NPC("statue", "the Octocat statue", 28, 13, null, () => ["A giant Octocat statue sits on a bed of sand, lit up in blue.", "It looks like it's keeping an eye on every repository on Earth."],
+          { ghost: true, reach: 46, hint: "look at the Octocat statue" })
+      ],
+      leave: () => enterPlace(HQ_STREET, 10 * TS, 7 * TS + 22, "down")
+    };
+
+    const HQ_ART = {                                           // furniture drawn for the HQ (x, y, width, height in pixels)
+      gscreen(c, X, Y, W, H, t) {
+        c.fillStyle = "#0d1117"; c.fillRect(X - 13, Y - 4, 24, H + 8);
+        c.fillStyle = "#081226"; c.fillRect(X - 10, Y - 1, 18, H + 2);
+        const cols = ["#58a6ff", "#bc8cff", "#ff7b72", "#79c0ff", "#7ee787"];
+        for (let k = 0; k < H / 6; k++) { c.fillStyle = cols[k % cols.length]; c.fillRect(X - 8, Y + 2 + k * 6, 4 + (Math.sin(t * 3 + k * 1.3) * 0.5 + 0.5) * 11, 3); }
+        c.fillStyle = "rgba(88,166,255,.18)"; c.fillRect(X + 11, Y - 4, 10, H + 8);
+      },
+      sofa(c, X, Y, W, H) {
+        c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(X + 2, Y + 6, W, H);
+        c.fillStyle = "#d9b98c"; c.fillRect(X, Y + 4, W, H - 4);
+        c.fillStyle = "#4a5560"; c.fillRect(X, Y + H - 12, W, 12);
+        c.fillStyle = "#5b6773"; c.fillRect(X + 2, Y + 4, W - 4, 16);
+        c.fillStyle = "#47525d"; for (let k = TS; k < W; k += TS) c.fillRect(X + k, Y + 4, 1, 16);
+        c.fillStyle = "#f0e6d8"; c.fillRect(X + 8, Y + 14, 12, 9); c.fillStyle = "#e3a46b"; c.fillRect(X + W - 22, Y + 14, 12, 9);
+      },
+      armchair(c, X, Y) {
+        c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(X + 6, Y + 8, 22, 22);
+        c.fillStyle = "#c9a273"; c.fillRect(X + 4, Y + 4, 24, 24); c.fillStyle = "#8c959f"; c.fillRect(X + 7, Y + 4, 18, 8); c.fillStyle = "#a5aeb8"; c.fillRect(X + 8, Y + 13, 16, 12);
+      },
+      ctable(c, X, Y, W) {
+        c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.ellipse(X + W / 2 + 3, Y + 20, 22, 9, 0, 0, 7); c.fill();
+        c.fillStyle = "#f0f3f6"; c.beginPath(); c.ellipse(X + W / 2, Y + 15, 22, 10, 0, 0, 7); c.fill();
+        c.fillStyle = "#1f6feb"; c.beginPath(); c.arc(X + W / 2 - 5, Y + 13, 3, 0, 7); c.fill(); c.fillStyle = "#f2cc60"; c.fillRect(X + W / 2 + 3, Y + 12, 8, 5);
+      },
+      guardpost(c, X, Y, W, H) {
+        c.fillStyle = "rgba(0,0,0,.3)"; c.fillRect(X + 4, Y + 6, W, H);
+        c.fillStyle = "#57606a"; c.fillRect(X, Y + 6, W, H - 6); c.fillStyle = "#d8c9a6"; c.fillRect(X, Y, W, 10);
+        c.fillStyle = "#d8c9a6"; if (H > W) c.fillRect(X, Y, 10, H);
+        for (let k = 0; k < (H > W ? H : W) / TS - 1; k += 2) {
+          const mx = H > W ? X + 6 : X + 6 + k * TS, my = H > W ? Y + 10 + k * TS : Y - 8;
+          c.fillStyle = "#0d1117"; c.fillRect(mx, my, 18, 12); c.fillStyle = "#58a6ff"; c.fillRect(mx + 2, my + 2, 14, 7);
+        }
+      },
+      cafeback(c, X, Y, W, H) {
+        c.fillStyle = "#e9e4dc"; c.fillRect(X, Y - 22, W, H + 22);
+        c.fillStyle = "#5a3d2b"; c.fillRect(X + 4, Y + 2, W - 8, 4); c.fillRect(X + 4, Y + 18, W - 8, 4);
+        for (let k = 0; k < W / 14; k++) { c.fillStyle = ["#f0f6fc", "#f85149", "#3fb950", "#f2cc60", "#58a6ff"][k % 5]; c.fillRect(X + 8 + k * 14, Y - 6, 7, 8); c.fillRect(X + 11 + k * 14, Y + 10, 6, 8); }
+        c.fillStyle = "#8b949e"; c.fillRect(X + W - 50, Y - 2, 22, 22); c.fillStyle = "#30363d"; c.fillRect(X + W - 46, Y + 2, 14, 8);
+        const sx = X + W / 2;                                  // the CAFE MONA LISA sign
+        c.fillStyle = "#2e6e6a"; c.beginPath(); c.roundRect(sx - 64, Y - 40, 128, 30, 6); c.fill();
+        c.fillStyle = "#4fb3b0"; c.beginPath(); c.roundRect(sx - 61, Y - 37, 122, 24, 5); c.fill();
+        c.fillStyle = "#1a7f37"; for (const px of [sx - 58, sx + 50]) { c.beginPath(); c.moveTo(px, Y - 14); c.lineTo(px + 4, Y - 38); c.lineTo(px + 8, Y - 14); c.fill(); }
+        c.fillStyle = "#fff"; c.font = "900 11px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("CAFE MONA LISA", sx, Y - 24.5);
+      },
+      cafecounter(c, X, Y, W, H) {
+        c.fillStyle = "rgba(0,0,0,.3)"; c.fillRect(X + 3, Y + 8, W, H);
+        c.fillStyle = "#6e7681"; c.fillRect(X, Y + 8, W, H - 4);
+        c.fillStyle = "rgba(0,0,0,.18)"; for (let k = 3; k < W; k += 4) c.fillRect(X + k, Y + 12, 1, H - 8);
+        c.fillStyle = "#c9cdd1"; c.fillRect(X, Y, W, 10); c.fillStyle = "#e6e9ec"; c.fillRect(X, Y, W, 2);
+        c.fillStyle = "#30363d"; c.fillRect(X + 30, Y - 12, 30, 14); c.fillStyle = "#8b949e"; c.fillRect(X + 33, Y - 9, 24, 5);
+        c.fillStyle = "#f0f6fc"; c.fillRect(X + W - 50, Y + 1, 26, 8); c.fillStyle = "#4fb3b0"; c.fillRect(X + W - 46, Y + 3, 18, 3);
+      },
+      cafetable(c, X, Y) {
+        c.fillStyle = "#30363d"; c.fillRect(X - 4, Y + 10, 8, 14); c.fillRect(X + 28, Y + 10, 8, 14);
+        c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(X + 6, Y + 12, 22, 16);
+        c.fillStyle = "#e6e9ec"; c.beginPath(); c.roundRect(X + 4, Y + 6, 24, 18, 4); c.fill();
+        c.fillStyle = "#e3734b"; c.beginPath(); c.arc(X + 16, Y + 13, 3, 0, 7); c.fill();
+      },
+      roundtable(c, X, Y, W, H) {
+        const cx = X + W / 2, cy = Y + H / 2;
+        c.fillStyle = "#8c959f"; for (const [dx, dy] of [[-24, 0], [24, 0], [0, -22], [0, 22]]) { c.beginPath(); c.roundRect(cx + dx - 7, cy + dy - 6, 14, 12, 3); c.fill(); }
+        c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.arc(cx + 3, cy + 4, 18, 0, 7); c.fill();
+        c.fillStyle = "#f6f8fa"; c.beginPath(); c.arc(cx, cy, 18, 0, 7); c.fill(); c.strokeStyle = "#d0d7de"; c.lineWidth = 2; c.stroke();
+      },
+      bikes(c, X, Y, W) {
+        c.fillStyle = "#6e7681"; c.fillRect(X, Y + 22, W, 4);
+        for (let k = 0; k < 2; k++) {
+          const bx = X + 10 + k * 32; c.strokeStyle = "#0d1117"; c.lineWidth = 2.5;
+          c.beginPath(); c.arc(bx, Y + 18, 8, 0, 7); c.moveTo(bx + 24, Y + 18); c.arc(bx + 16, Y + 18, 8, 0, 7); c.stroke();
+          c.strokeStyle = k ? "#f0f6fc" : "#1f6feb"; c.beginPath(); c.moveTo(bx, Y + 18); c.lineTo(bx + 6, Y + 8); c.lineTo(bx + 14, Y + 8); c.lineTo(bx + 16, Y + 18); c.moveTo(bx + 6, Y + 8); c.lineTo(bx + 8, Y + 18); c.stroke();
+        }
+      },
+      bleachers(c, X, Y, W, H, t) {
+        const steps = H / TS;
+        for (let k = 0; k < steps; k++) {
+          const sy = Y + k * TS;
+          c.fillStyle = "#5d7a99"; c.fillRect(X, sy, W, TS); c.fillStyle = "#d9b98c"; c.fillRect(X, sy + TS - 12, W, 12);
+          c.fillStyle = "#9aa4ae"; for (let x = X + 6; x < X + W - 30; x += 70) c.fillRect(x, sy + TS - 20, 58, 9);
+          c.fillStyle = ["#e3734b", "#f2cc60", "#bc8cff", "#7ee787"][k % 4]; c.fillRect(X + 20 + k * 37 % (W - 60), sy + 4, 10, 8);
+        }
+        c.strokeStyle = "#6e2a2a"; c.lineWidth = 3;
+        for (const rx of [X + W * 0.33, X + W * 0.66]) { c.beginPath(); c.moveTo(rx, Y + 2); c.lineTo(rx, Y + H - 2); c.stroke(); }
+      },
+      podium(c, X, Y) {
+        c.fillStyle = "rgba(0,0,0,.3)"; c.fillRect(X + 9, Y + 12, 18, 18);
+        c.fillStyle = "#24292f"; c.fillRect(X + 7, Y + 6, 18, 22); c.fillStyle = "#30363d"; c.fillRect(X + 5, Y + 4, 22, 6);
+        c.fillStyle = "#8b949e"; c.fillRect(X + 10, Y + 1, 12, 4);
+      },
+      pscreen(c, X, Y, W, H) {                                  // "Building the open future of AI", facing the bleachers
+        c.fillStyle = "#30363d"; c.fillRect(X + 20, Y + 10, 4, 18); c.fillRect(X + W - 24, Y + 10, 4, 18);
+        c.fillStyle = "#0d1117"; c.fillRect(X, Y - 40, W, 52);
+        const g = c.createLinearGradient(X, 0, X + W, 0); g.addColorStop(0, "#1c2333"); g.addColorStop(1, "#22303f");
+        c.fillStyle = g; c.fillRect(X + 4, Y - 36, W - 8, 44);
+        c.fillStyle = "#e6edf3"; c.font = "900 13px ui-monospace, monospace"; c.textAlign = "left"; c.textBaseline = "middle";
+        c.fillText("BUILDING THE OPEN", X + 16, Y - 22); c.fillText("FUTURE OF AI", X + 16, Y - 6);
+        c.fillStyle = "#f0f6fc"; c.beginPath(); c.arc(X + W - 36, Y - 14, 15, 0, 7); c.fill();
+        c.fillStyle = "#1c2333"; c.beginPath(); c.arc(X + W - 36, Y - 16, 7, 0, 7); c.fill(); c.fillRect(X + W - 40, Y - 12, 8, 9);
+      },
+      pillar(c, X, Y) {
+        c.fillStyle = "rgba(0,0,0,.3)"; c.fillRect(X + 9, Y + 12, 20, 20);
+        c.fillStyle = "#a8743f"; c.fillRect(X + 6, Y - 18, 20, 46); c.fillStyle = "#8a5a30"; c.fillRect(X + 22, Y - 18, 4, 46);
+        c.fillStyle = "rgba(60,30,10,.3)"; c.fillRect(X + 11, Y - 14, 1, 38); c.fillRect(X + 16, Y - 8, 1, 30);
+        c.fillStyle = "#c48d55"; c.fillRect(X + 6, Y - 18, 20, 3);
+      },
+      bench(c, X, Y, W, H) {
+        c.fillStyle = "#d9b98c"; c.fillRect(X, Y - 6, W, H + 6);
+        c.fillStyle = "#4a5560"; c.fillRect(X + 2, Y + 4, W - 4, H - 8); c.fillStyle = "#56626e"; c.fillRect(X + 2, Y - 4, W - 4, 8);
+        c.fillStyle = "#47525d"; for (let k = 18; k < W; k += 18) c.fillRect(X + k, Y - 4, 1, H - 2);
+        c.fillStyle = "#f0e6d8"; c.fillRect(X + 30, Y - 2, 12, 9); c.fillStyle = "#e3734b"; c.fillRect(X + 120, Y - 2, 12, 9); c.fillStyle = "#1b2a4a"; c.fillRect(X + 170, Y - 2, 12, 9);
+      },
+      whitetable(c, X, Y, W) {
+        c.fillStyle = "#8c959f"; for (let x = X + 8; x < X + W - 8; x += 28) { c.beginPath(); c.roundRect(x, Y - 8, 14, 10, 3); c.fill(); c.beginPath(); c.roundRect(x, Y + 24, 14, 10, 3); c.fill(); }
+        c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.roundRect(X + 4, Y + 6, W - 4, 22, 10); c.fill();
+        c.fillStyle = "#f6f8fa"; c.beginPath(); c.roundRect(X, Y + 2, W, 22, 10); c.fill(); c.strokeStyle = "#d0d7de"; c.lineWidth = 1.5; c.stroke();
+        c.fillStyle = "#30363d"; c.fillRect(X + 14, Y + 8, 16, 10); c.fillStyle = "#58a6ff"; c.fillRect(X + 16, Y + 10, 12, 6);
+      },
+      smalltable(c, X, Y) {
+        c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.arc(X + 18, Y + 18, 11, 0, 7); c.fill();
+        c.fillStyle = "#d0d7de"; c.fillRect(X + 15, Y + 14, 2, 14);
+        c.fillStyle = "#f6f8fa"; c.beginPath(); c.arc(X + 16, Y + 14, 11, 0, 7); c.fill(); c.strokeStyle = "#d0d7de"; c.lineWidth = 1.5; c.stroke();
+      },
+      statue(c, X, Y, W, H, t) {                               // the giant Octocat on its bed of sand, lit in blue
+        c.fillStyle = "#8a5a30"; c.beginPath(); c.roundRect(X - 4, Y + 4, W + 8, H, 14); c.fill();
+        c.fillStyle = "#e8dcc0"; c.beginPath(); c.roundRect(X, Y + 6, W, H - 6, 12); c.fill();
+        c.fillStyle = "#8c959f"; c.beginPath(); c.ellipse(X + 14, Y + H - 16, 12, 7, 0, 0, 7); c.ellipse(X + W - 14, Y + 20, 10, 6, 0, 0, 7); c.fill();
+        c.fillStyle = "#56d364"; c.beginPath(); c.arc(X + 12, Y + H - 22, 4, 0, 7); c.fill();
+        c.strokeStyle = "#2ea043"; c.lineWidth = 2; for (const px of [X + W - 18, X + W - 10, X + 18]) { c.beginPath(); c.moveTo(px, Y + 30); c.lineTo(px - 4, Y + 14); c.moveTo(px, Y + 30); c.lineTo(px + 3, Y + 12); c.stroke(); }
+        const cx = X + W / 2, glow = c.createRadialGradient(cx, Y + 20, 4, cx, Y + 20, 70);
+        glow.addColorStop(0, `rgba(88,166,255,${0.32 + 0.08 * Math.sin(t * 2)})`); glow.addColorStop(1, "rgba(88,166,255,0)");
+        c.fillStyle = glow; c.beginPath(); c.arc(cx, Y + 20, 70, 0, 7); c.fill();
+        c.fillStyle = "#2b3440"; c.beginPath(); c.ellipse(cx, Y + 52, 18, 22, 0, 0, 7); c.fill();
+        c.beginPath(); c.arc(cx, Y + 12, 28, 0, 7); c.fill();
+        c.beginPath(); c.moveTo(cx - 26, Y + 2); c.lineTo(cx - 24, Y - 22); c.lineTo(cx - 8, Y - 12); c.moveTo(cx + 26, Y + 2); c.lineTo(cx + 24, Y - 22); c.lineTo(cx + 8, Y - 12); c.fill();
+        c.fillStyle = "#3d6fb0"; c.beginPath(); c.ellipse(cx - 11, Y + 14, 8, 9, 0, 0, 7); c.ellipse(cx + 11, Y + 14, 8, 9, 0, 0, 7); c.fill();
+        c.fillStyle = "#79c0ff"; c.beginPath(); c.arc(cx - 9, Y + 11, 2.5, 0, 7); c.arc(cx + 13, Y + 11, 2.5, 0, 7); c.fill();
+        c.fillStyle = "rgba(121,192,255,.35)"; c.beginPath(); c.arc(cx - 12, Y - 2, 9, 0, 7); c.fill();
+      },
+      pole(c, X, Y) {                                          // the wooden utility pole in front of the building
+        c.strokeStyle = "#1b1f24"; c.lineWidth = 1.5;
+        c.beginPath(); c.moveTo(X + 16, Y - 200); c.quadraticCurveTo(X - 200, Y - 150, X - 520, Y - 120); c.moveTo(X + 16, Y - 190); c.quadraticCurveTo(X - 150, Y - 120, X - 520, Y - 60); c.stroke();
+        c.fillStyle = "rgba(0,0,0,.3)"; c.fillRect(X + 14, Y + 22, 14, 6);
+        c.fillStyle = "#7a5233"; c.fillRect(X + 12, Y - 214, 9, 242); c.fillStyle = "#5e3f27"; c.fillRect(X + 18, Y - 214, 3, 242);
+        c.fillStyle = "#30363d"; c.fillRect(X - 6, Y - 206, 44, 5);
+        c.fillStyle = "#e3b341"; c.fillRect(X + 12, Y - 4, 9, 4); c.fillRect(X + 12, Y + 8, 9, 4); c.fillRect(X + 12, Y - 60, 9, 3);
+      }
+    };
 
     /* ---------- Rendering ---------- */
     const AREAS = [
@@ -1466,6 +1905,16 @@
           ctx.fillStyle = "rgba(13,17,23,.85)"; ctx.strokeStyle = done ? "#3fb950" : "#58a6ff"; ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.roundRect(tx - w / 2, ty - 60, w, 15, 5); ctx.fill(); ctx.stroke();
           ctx.fillStyle = "#e6edf3"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(tag, tx, ty - 52.5);
+        }
+      }
+      {                                                        // bus stop to GitHub HQ
+        const bx = BUS_STOP.tx * TS + TS / 2, by = BUS_STOP.ty * TS + TS - 2;
+        drawBusStop(ctx, bx, by);
+        if (Math.hypot(player.x - bx, player.y - by) < TS * 3.2) {
+          const tag = "Bus to GitHub HQ"; ctx.font = "800 10px ui-monospace, monospace"; const w = ctx.measureText(tag).width + 12;
+          ctx.fillStyle = "rgba(13,17,23,.85)"; ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.roundRect(bx - w / 2, by - 100, w, 15, 5); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#e6edf3"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(tag, bx, by - 92.5);
         }
       }
       if (bossReady()) {                                       // the Merge Conflict boss
@@ -1538,6 +1987,7 @@
         ctx.fillStyle = "#e6edf3"; ctx.font = "bold 15px ui-monospace, Menlo, monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
         ctx.fillText(area, bx + 20, 31); ctx.restore();
       }
+      if (nearBusStop()) promptPill("A / " + keyLabel(KEYS.talk) + ": take the bus to GitHub HQ");
       const mw = miniCv.width, mh = miniCv.height, mx = VW - mw - 12, my = 12;
       ctx.save();
       ctx.fillStyle = "rgba(13,17,23,.8)"; ctx.strokeStyle = "rgba(230,237,243,.7)"; ctx.lineWidth = 2;
@@ -1550,6 +2000,7 @@
       }
       for (const tr of TRAINERS) if (!trainersBeaten.has(tr.id)) { ctx.fillStyle = "#58a6ff"; ctx.fillRect(mx + tr.tx * 2 - 1, my + tr.ty * 2 - 1, 3, 3); }
       if (bossReady()) { ctx.fillStyle = Math.sin(time * 8) > 0 ? "#f85149" : "#7ee787"; ctx.fillRect(mx + BOSS.tx * 2 - 2, my + BOSS.ty * 2 - 2, 5, 5); }
+      ctx.fillStyle = "#58a6ff"; ctx.fillRect(mx + BUS_STOP.tx * 2 - 1, my + BUS_STOP.ty * 2 - 1, 4, 4);
       ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(mx + player.x / TS * 2, my + player.y / TS * 2, 2.5, 0, 7); ctx.fill();
       ctx.restore();
     }
@@ -1561,7 +2012,8 @@
       const paused = !$("settings").hidden;
       if (!paused && scene !== "title" && scene !== "credits") playTime += dt;
       if (scene === "battle") { if (!paused) updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
-      else if (scene === "inside") { if (!paused && $("inv").hidden) updateInside(dt); room ? renderInside() : render(); }   // walking out clears the room mid-frame
+      else if (scene === "bus") { if (!paused) bus.t += dt; if (bus.t >= BUS_TIME) arriveBus(); scene === "bus" ? renderBus() : scene === "inside" ? renderInside() : render(); }
+      else if (scene === "inside") { if (!paused && $("inv").hidden) updateInside(dt); scene === "inside" ? renderInside() : scene === "bus" ? renderBus() : render(); }   // walking out can change the scene mid-frame
       else { if (scene === "world" && $("inv").hidden && !paused) update(dt); render(); }
       if (toastT <= 0 && achQueue.length && (scene === "world" || scene === "inside" || scene === "credits")) { const a = achQueue.shift(); toast("🏆 Achievement unlocked: " + a.icon + " " + a.name, 2.8); }
       if (toastT > 0 && scene !== "world" && (toastT -= dt) <= 0) $("toast").classList.remove("show");
@@ -2152,7 +2604,7 @@
     $("runBtn").addEventListener("click", runAway);
     $("pickRun").addEventListener("click", runAway);
     $("resetBtn").addEventListener("click", () => {
-      collected = new Set(); bag = { hotfix: 0, revert: 0 }; bossBeaten = false; shinies = new Set(); trainersBeaten = new Set(); playTime = 0; talked = new Set(); gifts = new Set(); save(); selected = null; updateCount(); renderInventory();
+      collected = new Set(); bag = { hotfix: 0, revert: 0 }; bossBeaten = false; shinies = new Set(); trainersBeaten = new Set(); playTime = 0; talked = new Set(); gifts = new Set(); hqPass = false; save(); selected = null; updateCount(); renderInventory();
       $("detail").textContent = "Progress reset. Go find them again!";
     });
 
@@ -2193,7 +2645,7 @@
       $("switchBtn").textContent = "Switch (" + keyLabel(KEYS.switch) + ")"; $("runBtn").textContent = "Run (" + keyLabel(KEYS.run) + ")";
       $("help").innerHTML = "Move with " + kb("up") + kb("left") + kb("down") + kb("right") + " or arrow keys. Walk into an Octocat to collect it. " + kb("dex") + " opens the Octodex, " + kb("music") +
         " toggles music, <kbd>1</kbd>–<kbd>4</kbd> pick a move in battle, " + kb("hotfix") + " uses a Hotfix, " + kb("revert") + " a Revert, " + kb("switch") +
-        " switches Octocat. Walk up into a door to go inside; " + kb("talk") + " or Enter talks to people. Code beats Ops, Ops beats Security, Security beats Code. Your progress is saved in this browser.";
+        " switches Octocat. Walk up into a door to go inside; " + kb("talk") + " or Enter talks to people. The bus stop on Laguna Street goes to GitHub HQ. Code beats Ops, Ops beats Security, Security beats Code. Your progress is saved in this browser.";
       const box = $("keys"); box.textContent = "";
       for (const [id, name] of KEY_ACTIONS) {
         const row = document.createElement("div"), b = document.createElement("button");
@@ -2237,6 +2689,8 @@
         else if (scene === "battle" && k === KEYS.revert) useItem("revert");
         return;
       }
+      if (scene === "bus") { if (k === "Enter" || k === " " || k === KEYS.talk || k === "Escape") { e.preventDefault(); skipBus(); } return; }
+      if (scene === "world" && nearBusStop() && (k === "Enter" || k === " " || k === KEYS.talk)) { e.preventDefault(); rideBus("hq"); return; }
       if (scene === "inside") {
         if (talk) { if (k === "Enter" || k === " " || k === KEYS.talk || k === "Escape") { e.preventDefault(); k === "Escape" ? closeTalk() : advanceTalk(); } return; }
         if (k === "Enter" || k === " " || k === KEYS.talk) { e.preventDefault(); tryTalk(); return; }
@@ -2313,11 +2767,13 @@
           if (A && !was.A) btns[i].click();
         }
         if (B && !was.B) runAway();
+      } else if (scene === "bus") {
+        if (A && !was.A) skipBus();
       } else if (scene === "inside") {
         if (A && !was.A) talk ? advanceTalk() : tryTalk();
         else if (B && !was.B && talk) closeTalk();
       } else if (scene === "world") {
-        if (A && !was.A && inGame) setInventory(true);
+        if (A && !was.A && inGame) nearBusStop() ? rideBus("hq") : setInventory(true);
         else if (B && !was.B && !inGame) setInventory(false);
         else if (Y && !was.Y) setInventory($("inv").hidden);
       }
