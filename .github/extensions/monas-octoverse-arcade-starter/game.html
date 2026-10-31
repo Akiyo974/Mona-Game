@@ -1245,6 +1245,10 @@
       const r = room.def, W = r.w * TS, H = r.h * TS;
       if (r.grid) {
         for (const [px, py] of [[x - 9, y - 1], [x + 9, y - 1], [x - 9, y - 10], [x + 9, y - 10]]) if (gridSolid(r, Math.floor(px / TS), Math.floor(py / TS))) return true;
+        for (const [x0, y0, x1, y1] of r.walls || []) {        // straight walls: keep your feet clear of the line
+          const dx = x1 - x0, dy = y1 - y0, k = Math.max(0, Math.min(1, ((x - x0) * dx + (y - 5 - y0) * dy) / (dx * dx + dy * dy)));
+          if (Math.hypot(x - x0 - k * dx, y - 5 - y0 - k * dy) < 12) return true;
+        }
       } else {
         if (x < 10 || x > W - 10 || y - 10 < 2 * TS) return true;
         if (y > H - 4 && Math.abs(x - roomDoorX(r)) > 16) return true;
@@ -1699,6 +1703,7 @@
         const y = SK.row(400 + ((x - 1) * 32 + 16 - 575) * 100 / 385);
         g[y][x] = "w"; if (prev !== null && y > prev) g[prev][x] = "w"; prev = y;
       }
+      for (let y = 14; y <= 16; y++) for (let x = 19; x <= 28; x++) if (g[y][x] === "w") g[y][x] = ".";   // that part is HQ.walls, a straight line
       for (const x of [26, 27, 28]) g[16][x] = "g";            // the three security gates
       for (let x = SK.col(1015); x < W - 1; x++) g[SK.row(500)][x] = "w";   // wall behind the guard post
       for (let y = 18; y < H - 1; y++) for (let x = 33; x < W - 1; x++) g[y][x] = "w";
@@ -1725,7 +1730,7 @@
         { kind: "whitetable", x: 24, y: 8, w: 3, h: 1 },
         { kind: "statuefig", x: 25, y: 10, w: 3, h: 2 },
         // wooden pillars, as in the photos
-        { kind: "pillar", x: 19, y: 4, w: 1, h: 1 }, { kind: "pillar", x: 21, y: 13, w: 1, h: 1 }, { kind: "pillar", x: 12, y: 16, w: 1, h: 1 }, { kind: "pillar", x: 31, y: 7, w: 1, h: 1 }
+        { kind: "pillar", x: 19, y: 4, w: 1, h: 1 }, { kind: "pillar", x: 12, y: 16, w: 1, h: 1 }, { kind: "pillar", x: 31, y: 7, w: 1, h: 1 }
       ],
       npcs: [
         NPC("gabe", "Guard Gabe", 32, 19, GUARD, () => hqPass ? ["Badge looks good. The Octocat statue is right in front of the gates.", "Porte 2 on the far side is for staff only."]
@@ -1744,9 +1749,14 @@
         NPC("statue", "the Octocat statue", 26, 15, null, () => ["A giant Octocat statue sits on a bed of sand, lit up in blue.", "It looks like it's keeping an eye on every repository on Earth."],
           { ghost: true, reach: 70, hint: "look at the Octocat statue" })
       ],
-      paint: (c) => {                                          // the CAFE MONA LISA sign on the café side of the screen wall
+      walls: [[SK.col(575) * TS, SK.row(400) * TS, 26 * TS, SK.row(400) * TS + (26 * TS - SK.col(575) * TS) * 100 / 385]],   // diagonal wall, screen wall to the gates
+      paint: (c) => {
+        for (const [x0, y0, x1, y1] of HQ.walls) {               // a thick white wall along the diagonal
+          const band = (dy, w, col) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = "square"; c.beginPath(); c.moveTo(x0, y0 + dy); c.lineTo(x1, y1 + dy); c.stroke(); };
+          band(6, 12, "rgba(0,0,0,.2)"); band(3, 12, "#c4cad0"); band(0, 10, "#e6e9ec"); band(-3, 3, "#f6f8fa");
+        }
         const x = SK.col(575) * TS - 2, y = 18.5 * TS;
-        c.save(); c.translate(x, y); c.rotate(-Math.PI / 2);
+        c.save(); c.translate(x, y); c.rotate(-Math.PI / 2);   // the CAFE MONA LISA sign on the café side of the screen wall
         c.fillStyle = "#2e6e6a"; c.beginPath(); c.roundRect(-70, -14, 140, 18, 5); c.fill();
         c.fillStyle = "#4fb3b0"; c.beginPath(); c.roundRect(-67, -12, 134, 14, 4); c.fill();
         c.fillStyle = "#fff"; c.font = "900 10px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("CAFE MONA LISA", 0, -4.5);
