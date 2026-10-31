@@ -14,9 +14,9 @@ Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great 
 Built during the GitHub Day of Learning workshop by:
 
 - Christen Dijoux ([@Akiyo974](https://github.com/Akiyo974))
-- Chanrattnak Mong
-- Brett Post
-- Don Ebben
+- Chanrattnak Mong ([@rattnak](https://github.com/rattnak))
+- Brett Post ([@BrettPost](https://github.com/BrettPost))
+- Don Ebben ([@debben](https://github.com/debben))
 - Luke Vandekieft
 
 ## Highlights
