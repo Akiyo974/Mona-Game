@@ -70,6 +70,8 @@ Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great 
 
 Music starts on your first key press or click. The badge connects with the **Connect badge** button (Web Serial, Chrome or Edge only).
 
+**Badge as a second screen.** With a badge app that speaks the [badge protocol](docs/BADGE_PROTOCOL.md), the badge also shows the mini-map, the Octodex and, in battle, your four moves and both HP bars, so you can pick moves from the badge. Without it, the badge keeps working as a plain controller.
+
 ## Run it
 
 **In the Copilot App (canvas extension).** Open this repository as a Project in the GitHub Copilot app and ask:

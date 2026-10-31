@@ -1032,7 +1032,7 @@
     }
     function loop(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt; frameDt = dt;
-      pollGamepad();
+      pollGamepad(); badgeTick(dt);
       if (scene === "title") drawTitleArt();
       if (scene === "battle") { updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
       else { if (scene === "world" && $("inv").hidden) update(dt); render(); }
@@ -1589,17 +1589,92 @@
     }
 
     /* ---------- Badger badge over USB serial (Web Serial) ---------- */
-    // The Controller app on the badge prints "+up" / "-up" lines for each press / release.
+    // Badge -> game, one line each: "+up" / "-up" (also down, left, right, select, back) for presses and releases,
+    // "move 1".."move 4", "switch", "run", "pick 1".."pick 6", and "hello display 1" when the badge app can draw.
+    // Game -> badge: "?" once after connecting (a badge with a screen answers "hello display 1"), then one compact
+    // JSON object per line describing what to draw (see docs/BADGE_PROTOCOL.md). Nothing is sent until the badge says hello,
+    // so the plain Controller app keeps working unchanged.
     const badgeHeld = new Set();
-    let badgePort = null;
+    let badgePort = null, badgeWriter = null, badgeDisplay = false;
+    const badgeOut = { pending: null, last: null, busy: false, checkT: 0, worldT: 0, world: null };
+    async function badgeWrite(text) {
+      if (!badgeWriter) return;
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("badge write timed out")), 2000));
+      await Promise.race([badgeWriter.write(new TextEncoder().encode(text + "\n")), timeout]);
+    }
+    async function badgePump() {
+      if (badgeOut.busy) return;
+      badgeOut.busy = true;
+      try {
+        while (badgeOut.pending) { const line = badgeOut.pending; badgeOut.pending = null; await badgeWrite(line); badgeOut.last = line; }
+      } catch (e) { badgeDisplay = false; badgeStatus(); }
+      badgeOut.busy = false;
+    }
+    function badgeSend(obj) {
+      if (!badgeDisplay) return;
+      const line = JSON.stringify(obj);
+      if (line === badgeOut.last || line === badgeOut.pending) return;
+      badgeOut.pending = line; badgePump();
+    }
+    function badgeStatus() { $("badgeBtn").textContent = !badgePort ? "Connect badge" : badgeDisplay ? "Badge: controller + screen" : "Badge connected"; }
+    const sideInfo = (s) => ({ name: s.cat.name, type: TYPES[s.type].label, lv: s.lv, hp: Math.max(0, s.hp), max: s.max, atk: s.st.atk, def: s.st.def });
+    function badgeState() {
+      if (scene === "title") return { t: "title" };
+      const picking = scene === "pick" || (scene === "battle" && battle && battle.picking);
+      if (picking) {
+        const cards = [...$("pickGrid").children];
+        return { t: "pick", title: $("pickTitle").textContent, options: cards.map((c) => [...c.querySelectorAll("span:not(.no)")].map((x) => x.textContent).join(" ")), sel: Math.max(0, cards.indexOf(document.activeElement)) };
+      }
+      if (scene === "battle" && battle) {
+        const btns = [...$("moves").children];
+        return {
+          t: "battle", busy: battle.phase !== "choose", msg: battle.phase === "choose" ? "What will " + battle.me.cat.name + " do?" : $("battleSr").textContent,
+          me: sideInfo(battle.me), foe: sideInfo(battle.foe),
+          moves: battle.me.moves.map((n) => { const m = MOVES[n]; return { n, type: TYPES[m.type].label, pow: m.pow || 0, acc: m.acc, kind: m.kind || "atk", eff: m.pow ? typeMult(m.type, battle.foe.type) : 1 }; }),
+          sel: Math.max(0, btns.indexOf(document.activeElement)), canSwitch: !$("switchBtn").disabled
+        };
+      }
+      if (!$("inv").hidden) return { t: "dex", found: OCTOCATS.filter((c) => collected.has(c.id)).map((c) => c.name), total: OCTOCATS.length };
+      return { t: "world", area: area || "Fort Mason", dex: collected.size, total: OCTOCATS.length, lv: teamLevel(),
+        me: [Math.floor(player.x / TS), Math.floor(player.y / TS)], left: OCTOCATS.filter((c) => !collected.has(c.id)).map((c) => [c.tx, c.ty]) };
+    }
+    function badgeTick(dt) {
+      if (!badgeDisplay || (badgeOut.checkT -= dt) > 0) return;
+      badgeOut.checkT = 0.25;
+      const st = badgeState();
+      if (st.t === "world") {
+        // the e-ink screen refreshes slowly: only resend the world when the area or the Octodex changes, or every 3 s while moving
+        const key = st.area + "|" + st.dex, moved = !badgeOut.world || badgeOut.world.me + "" !== st.me + "";
+        if (badgeOut.world && badgeOut.world.key === key && !(moved && (badgeOut.worldT -= 0.25) <= 0)) return;
+        badgeOut.world = { key, me: st.me }; badgeOut.worldT = 3;
+      } else badgeOut.world = null;
+      badgeSend(st);
+    }
+    function badgeCommand(line) {
+      const m = /^([+-])(up|down|left|right|select|back)$/.exec(line);
+      if (m) { m[1] === "+" ? badgeHeld.add(m[2]) : badgeHeld.delete(m[2]); return; }
+      if (/^hello display/.test(line)) {
+        badgeDisplay = true; badgeOut.last = null; badgeOut.world = null; badgeStatus();
+        badgeSend({ t: "map", w: MW, h: MH, rows: grid.map((r) => r.join("")) });
+        toast("Badge screen connected");
+        return;
+      }
+      if (scene === "title" && /^(move|pick) /.test(line)) { startGame(); return; }
+      let k;
+      if ((k = /^move ([1-4])$/.exec(line))) useMove(+k[1] - 1);
+      else if (line === "switch") openSwitch(false);
+      else if (line === "run") runAway();
+      else if ((k = /^pick ([1-9])$/.exec(line))) { const card = $("pickGrid").children[+k[1] - 1]; if (card && !$("pick").hidden) card.click(); }
+    }
     async function connectBadge() {
       if (!("serial" in navigator)) { toast("Web Serial is not available in this browser"); return; }
       try {
         badgePort = await navigator.serial.requestPort();
         await badgePort.open({ baudRate: 115200 });
-      } catch (e) { toast("Badge not connected: " + (e.message || e.name)); return; }
-      $("badgeBtn").textContent = "Badge connected";
+      } catch (e) { badgePort = null; toast("Badge not connected: " + (e.message || e.name)); return; }
+      badgeStatus();
       toast("Badge connected - open the Controller app on it");
+      try { badgeWriter = badgePort.writable.getWriter(); await badgeWrite("?"); } catch (e) { badgeWriter = null; }
       const reader = badgePort.readable.pipeThrough(new TextDecoderStream()).getReader();
       let buf = "";
       try {
@@ -1608,15 +1683,12 @@
           if (done) break;
           buf += value;
           let i;
-          while ((i = buf.indexOf("\n")) >= 0) {
-            const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-            const m = /^([+-])(up|down|left|right|select|back)$/.exec(line);
-            if (m) m[1] === "+" ? badgeHeld.add(m[2]) : badgeHeld.delete(m[2]);
-          }
+          while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); badgeCommand(line); }
         }
       } catch (e) { /* cable unplugged */ }
-      badgeHeld.clear(); badgePort = null;
-      $("badgeBtn").textContent = "Connect badge"; toast("Badge disconnected");
+      badgeHeld.clear(); badgePort = null; badgeDisplay = false;
+      try { if (badgeWriter) badgeWriter.releaseLock(); } catch (e) { /* already gone */ }
+      badgeWriter = null; badgeStatus(); toast("Badge disconnected");
     }
     $("badgeBtn").addEventListener("click", () => { if (!badgePort) connectBadge(); });
 
