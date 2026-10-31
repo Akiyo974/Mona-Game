@@ -1236,7 +1236,7 @@
     function roomBlocked(x, y) {
       const r = room.def, W = r.w * TS, H = r.h * TS;
       if (x < 10 || x > W - 10 || y - 10 < 2 * TS) return true;
-      if (y > H - 4 && Math.abs(x - roomDoorX(r)) > 14) return true;
+      if (y > H - 4 && Math.abs(x - roomDoorX(r)) > 16) return true;
       for (const it of r.items) if (x + 9 > it.x * TS && x - 9 < (it.x + it.w) * TS && y > it.y * TS && y - 10 < (it.y + it.h) * TS) return true;
       for (const n of r.npcs) if (Math.hypot(x - (n.x * TS + TS / 2), y - (n.y * TS + TS - 4)) < 18) return true;
       return false;
@@ -1252,6 +1252,11 @@
       const n = Math.hypot(dx, dy), step = player.speed * dt, nx = room.x + dx / n * step, ny = room.y + dy / n * step;
       if (!roomBlocked(nx, room.y)) room.x = nx;
       if (!roomBlocked(room.x, ny)) room.y = ny;
+      const doorX = roomDoorX(room.def), off = doorX - room.x;
+      if (dy > 0 && room.y > room.def.h * TS - 40 && Math.abs(off) < 2.5 * TS && off) {   // heading for the exit: slide into the doorway
+        const nx2 = room.x + Math.sign(off) * Math.min(Math.abs(off), step);
+        if (!roomBlocked(nx2, room.y)) room.x = nx2;
+      }
       if (room.y > room.def.h * TS + 2) exitRoom();             // out through the door
     }
     function nearNpc() {
