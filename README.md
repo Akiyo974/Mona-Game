@@ -7,9 +7,9 @@ Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great 
 ▶ **Play in the browser:** https://akiyo974.github.io/Mona-Game/
 (published by GitHub Pages from `main`; see [Publish on GitHub Pages](#publish-on-github-pages))
 
-[![Fort Mason Octodex trailer](media/trailer-thumbnail-1280.jpg)](media/fort-mason-octodex-trailer.mp4)
+https://github.com/user-attachments/assets/139ef6e9-4731-408f-80e7-a98b704ab7c9
 
-🎬 **Trailer:** 54 seconds recorded from the game, with its own music, ending on Badger mode: [watch it](media/fort-mason-octodex-trailer.mp4).
+🎬 **Trailer:** 54 seconds recorded from the game, with its own music, ending on Badger mode (full 1080p file: [`media/fort-mason-octodex-trailer.mp4`](media/fort-mason-octodex-trailer.mp4)).
 
 ![Title screen](docs/screenshots/after-title.png)
 
@@ -22,6 +22,8 @@ Built during the GitHub Day of Learning workshop by:
 - Brett Post ([@BrettPost](https://github.com/BrettPost))
 - Don Ebben ([@debben](https://github.com/debben))
 - Luke Vandekieft
+
+Want to add an Octocat, a move or an item? See [CONTRIBUTING.md](CONTRIBUTING.md) and the [good first issues](https://github.com/Akiyo974/Mona-Game/labels/good%20first%20issue).
 
 ## Highlights
 
@@ -38,6 +40,8 @@ Built during the GitHub Day of Learning workshop by:
 **Gameplay & polish**
 - Title screen, location banners, minimap and "!" alerts when a wild Octocat is near.
 - Your first Octocat is free; after that, pick one of yours and battle to catch the next.
+- Catch all twelve and a **Merge Conflict** boss blocks Fort Mason Center: its changes flip between Code, Ops and Security every turn. Resolve it to roll the credits.
+- Progress (Octodex, items, boss, position) is saved in your browser; the title screen offers **Continue**.
 - Battle intro transition, animated HP bars, screen shake, particles, damage numbers and typewriter dialogue.
 
 **Battle system**
@@ -46,10 +50,11 @@ Built during the GitHub Day of Learning workshop by:
 - 14 moves with power, accuracy, same-type bonus, critical hits and effects: Rebase Rush always strikes first, Refactor heals, Copilot Assist raises Attack, Code Review lowers Defense, Fork Bomb hits hard but often fails.
 - Speed decides who moves first, the wild Octocat picks its moves to exploit your weaknesses, and move buttons flag super-effective (▲) and weak (▼) choices.
 - Switch Octocats mid-battle (the foe gets a free hit), keep fighting when one faints, and if your whole team faints you rest back at the Bay Promenade.
+- Items: a **Hotfix** restores half your Octocat's HP (the foe still attacks) and a **Revert** undoes the last turn for both sides. Your first Octocat comes with 2 Hotfix and 1 Revert, every catch adds a Hotfix and every fourth a Revert.
 - Win and an Octodex orb wobbles three times… Gotcha! Each catch levels up your whole team.
 - An Octodex with numbered entries and silhouettes for Octocats you have not found yet.
 - An 8-bit chiptune soundtrack (overworld + battle) and sound effects, all synthesised with Web Audio.
-- Keyboard, gamepad, and the Badger badge over USB serial.
+- Keyboard, gamepad, touch screen (on-screen D-pad and A/B buttons on phones and tablets) and the Badger badge over USB serial.
 
 ![The twelve Octocats](docs/screenshots/octocats.png)
 
@@ -72,15 +77,16 @@ Built during the GitHub Day of Learning workshop by:
 
 ## Controls
 
-| Action | Keyboard | Gamepad | Badger badge |
-| --- | --- | --- | --- |
-| Start | <kbd>Enter</kbd> / <kbd>Space</kbd> | A / Start | select |
-| Move | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows | D-pad / left stick | arrows |
-| Pick a move in battle | <kbd>1</kbd>–<kbd>4</kbd> (or <kbd>F</kbd> for the first) | D-pad + A | arrows + select |
-| Switch Octocat | <kbd>S</kbd> | D-pad + A | arrows + select |
-| Run from battle | <kbd>Esc</kbd> | B | back |
-| Octodex | <kbd>I</kbd> | Y / A | back closes |
-| Music on/off | <kbd>M</kbd> | | |
+| Action | Keyboard | Gamepad | Touch screen | Badger badge |
+| --- | --- | --- | --- | --- |
+| Start | <kbd>Enter</kbd> / <kbd>Space</kbd> | A / Start | A or tap | select |
+| Move | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows | D-pad / left stick | D-pad | arrows |
+| Pick a move in battle | <kbd>1</kbd>–<kbd>4</kbd> (or <kbd>F</kbd> for the first) | D-pad + A | tap the move | arrows + select |
+| Use a Hotfix / Revert | <kbd>H</kbd> / <kbd>R</kbd> | D-pad + A | tap the item | not on the second screen yet |
+| Switch Octocat | <kbd>S</kbd> | D-pad + A | tap Switch | arrows + select |
+| Run from battle | <kbd>Esc</kbd> | B | B | back |
+| Octodex | <kbd>I</kbd> | Y / A | A opens, B closes | back closes |
+| Music on/off | <kbd>M</kbd> | | Music button | |
 
 Music starts on your first key press or click. The badge connects with the **Connect badge** button (Web Serial, Chrome or Edge only).
 
