@@ -4,8 +4,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mona's Octoverse Arcade - Fort Mason Octodex</title>
-  <link rel="icon" href="data:,">
+  <title>Fort Mason Octodex · Mona's Octoverse Arcade</title>
+  <meta name="description" content="Catch all twelve GitHub Octocats around San Francisco's Fort Mason and battle them with Git, Code, Ops and Security moves. A Copilot App canvas game.">
+  <meta name="application-name" content="Fort Mason Octodex">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="color-scheme" content="dark">
+  <meta name="keywords" content="GitHub, Octocat, Octodex, Mona, Copilot, San Francisco, Fort Mason, GitHub Universe, game">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Mona's Octoverse Arcade">
+  <meta property="og:title" content="Fort Mason Octodex">
+  <meta property="og:description" content="Explore Fort Mason, San Francisco, catch all twelve Octocats and win Git-powered battles.">
+  <meta property="og:url" content="https://akiyo974.github.io/Mona-Game/">
+  <meta property="og:image" content="https://akiyo974.github.io/Mona-Game/og.png">
+  <meta property="og:image:alt" content="Octocats in front of the Golden Gate Bridge on the Fort Mason Octodex title screen">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Fort Mason Octodex">
+  <meta name="twitter:description" content="Catch all twelve GitHub Octocats around San Francisco's Fort Mason.">
+  <meta name="twitter:image" content="https://akiyo974.github.io/Mona-Game/og.png">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a371f7'/%3E%3Cstop offset='1' stop-color='%2358a6ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='29' fill='%230d1117' stroke='url(%23g)' stroke-width='5'/%3E%3Cpath d='M17 31 16 13l9 7c4-1.5 10-1.5 14 0l9-7-1 18c1 2 1 3 1 5 0 8-7 12-16 12s-16-4-16-12c0-2 0-3 1-5z' fill='%23e6edf3'/%3E%3Cellipse cx='32' cy='38' rx='11' ry='7' fill='%23f6c9a8'/%3E%3Ccircle cx='27' cy='37' r='2' fill='%234a2216'/%3E%3Ccircle cx='37' cy='37' r='2' fill='%234a2216'/%3E%3Ccircle cx='50' cy='50' r='7' fill='%233fb950' stroke='%230d1117' stroke-width='3'/%3E%3C/svg%3E">
   <style>
     :root {
       color-scheme: dark;
@@ -94,6 +110,8 @@
     .card.selected { box-shadow: 0 0 0 2px var(--blue), 0 0 18px -2px var(--blue); }
     .card .no { position: absolute; top: 0.3rem; left: 0.45rem; color: var(--muted); font-size: 0.6rem; letter-spacing: 0.05em; }
     .card canvas { width: 64px; height: 64px; image-rendering: auto; filter: drop-shadow(0 4px 4px rgba(0,0,0,.5)); }
+    .card .ty { padding: 0.05rem 0.45rem; color: #fff; font-size: 0.58rem; background: var(--t, #6e7681); border-radius: 99px; }
+    .card .hp { color: var(--green-hi); font-size: 0.62rem; }
     .card .mv { margin-top: 0.15rem; padding: 0.1rem 0.4rem; color: #cfe3ff; font-size: 0.58rem; font-weight: 600; background: rgba(88,166,255,.14); border: 1px solid rgba(88,166,255,.3); border-radius: 99px; }
     #detail { min-height: 3rem; margin: 0; padding: 0.6rem 0.8rem; color: #c9d1d9; font: 0.82rem/1.45 var(--mono); background: rgba(13,17,23,.75); border: 1px solid var(--edge); border-left: 3px solid var(--green); border-radius: 0.5rem; }
     button {
@@ -107,16 +125,29 @@
     button:focus-visible, .card:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
     button:disabled { opacity: .45; cursor: default; filter: grayscale(.4); }
     #battleUI {
-      position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 2; display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.9rem;
+      position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 2; display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 0.6rem 0.8rem;
       background: linear-gradient(180deg, rgba(22,29,46,.97), rgba(11,16,32,.97)); border: 2px solid #c9d1d9; border-radius: 0.8rem;
       box-shadow: 0 0 0 3px #0b0f19, 0 0 0 5px #3d4a6b, 0 12px 30px rgba(0,0,0,.6);
     }
     #battleUI[hidden] { display: none; }
-    #battleMsg { flex: 1; margin: 0; min-height: 2.6rem; font: 700 0.92rem/1.4 var(--mono); }
+    #battleMsg { margin: 0; min-height: 1.4rem; font: 700 0.92rem/1.4 var(--mono); }
+    #battleUI.busy #battleMsg { min-height: 2.6rem; }
+    #battleUI.busy .controls { display: none; }
+    #battleUI:not(.busy) #battleMsg { display: none; }
+    .controls { display: flex; gap: 0.5rem; }
+    .moves { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+    .move {
+      --t: #6e7681; display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; padding: 0.45rem 0.6rem; color: #fff; text-align: left;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--t) 85%, #fff), color-mix(in srgb, var(--t) 80%, #000));
+      box-shadow: 0 3px 0 color-mix(in srgb, var(--t) 45%, #000);
+    }
+    .move kbd { min-width: 1.2em; padding: 0 0.2rem; font-size: 0.6rem; color: #fff; background: rgba(0,0,0,.3); border-color: rgba(255,255,255,.3); }
+    .move small { font-size: 0.6rem; font-weight: 600; opacity: 0.92; }
+    .move .up { color: #fff3b0; } .move .down { color: #ffc2bd; }
     #battleMsg::after { content: "▼"; display: inline-block; margin-left: 0.4rem; color: var(--gold); font-size: 0.65rem; animation: nudge .8s ease-in-out infinite; }
     @keyframes nudge { 50% { transform: translateY(3px); } }
-    #battleUI .row { display: flex; flex-direction: column; gap: 0.4rem; min-width: 11rem; }
-    #fightBtn { color: #fff; background: linear-gradient(180deg, #ff7b72, #da3633); box-shadow: 0 3px 0 #8e1519; padding: 0.65rem 0.8rem; }
+    #battleUI .row { display: flex; flex-direction: column; gap: 0.4rem; min-width: 8.5rem; }
+    #battleUI .row button { flex: 1; }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .title {
       align-items: center; justify-content: center; gap: 0.3rem; text-align: center; cursor: pointer;
@@ -137,10 +168,12 @@
     .help { margin: 0.65rem 0 0; color: var(--muted); font-size: 0.78rem; }
     kbd { display: inline-block; min-width: 1.3em; padding: 0 0.3rem; color: var(--ink); text-align: center; background: linear-gradient(180deg, #2d3548, #1b2133); border: 1px solid #3d4a6b; border-bottom-width: 2px; border-radius: 0.3rem; font: 700 0.7rem/1.5 var(--mono); }
     @media (max-width: 520px) {
-      #battleUI { left: 8px; right: 8px; bottom: 8px; flex-direction: column; align-items: stretch; gap: 0.3rem; padding: 0.4rem 0.55rem; }
-      #battleMsg { min-height: 0; font-size: 0.72rem; }
+      #battleUI { left: 8px; right: 8px; bottom: 8px; gap: 0.3rem; padding: 0.4rem 0.55rem; }
+      #battleMsg, #battleUI.busy #battleMsg { min-height: 0; font-size: 0.72rem; }
+      .controls { flex-direction: column; gap: 0.3rem; }
+      .move { padding: 0.3rem 0.45rem; font-size: 0.66rem; }
       #battleUI .row { flex-direction: row; min-width: 0; }
-      #battleUI .row button { flex: 1; padding: 0.4rem 0.5rem; font-size: 0.66rem; }
+      #battleUI .row button { padding: 0.4rem 0.5rem; font-size: 0.66rem; }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
   </style>
@@ -185,7 +218,10 @@
       <div id="battleUI" hidden>
         <p id="battleMsg" aria-hidden="true"></p>
         <p id="battleSr" class="sr" role="status" aria-live="polite"></p>
-        <div class="row"><button id="fightBtn" type="button">Fight</button><button id="runBtn" type="button" class="secondary">Run (Esc)</button></div>
+        <div class="controls">
+          <div class="moves" id="moves"></div>
+          <div class="row"><button id="switchBtn" type="button" class="secondary">Switch (S)</button><button id="runBtn" type="button" class="secondary">Run (Esc)</button></div>
+        </div>
       </div>
       <section class="overlay" id="inv" hidden aria-label="Inventory">
         <header><h2>Octodex <span id="invCount"></span></h2><button id="closeInv" type="button">Close (I)</button></header>
@@ -194,7 +230,7 @@
         <div><button id="resetBtn" type="button" class="secondary">Reset progress</button></div>
       </section>
     </div>
-    <p class="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. Walk into an Octocat to collect it. <kbd>I</kbd> opens the Octodex, <kbd>M</kbd> toggles music, <kbd>F</kbd> attacks in battle.</p>
+    <p class="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. Walk into an Octocat to collect it. <kbd>I</kbd> opens the Octodex, <kbd>M</kbd> toggles music, <kbd>1</kbd>–<kbd>4</kbd> pick a move in battle, <kbd>S</kbd> switches Octocat. Code beats Ops, Ops beats Security, Security beats Code.</p>
   </main>
   <script>
     // Drop in your own art here: paths/URLs relative to this page. Leave null to use the built-in placeholders.
@@ -453,17 +489,50 @@
     miniCv.getContext("2d").drawImage(mapCv, 0, 0, miniCv.width, miniCv.height);
 
     /* ---------- State ---------- */
-    let collected = new Set(), moves = {}, keys = {}, last = 0, toastT = 0, selected = null, time = 0;
+    let collected = new Set(), keys = {}, last = 0, toastT = 0, selected = null, time = 0;
     let scene = "title", battle = null, encounterCd = 0, pendingFoe = null;
     const player = { x: SPAWN.tx * TS + TS / 2, y: SPAWN.ty * TS + TS / 2, dir: "down", moving: false, w: 20, h: 12, speed: 150 };
-    const MOVES = [
-      { name: "Commit Strike", acc: 100 }, { name: "Merge Slam", acc: 90 }, { name: "Pull Request Punch", acc: 85 },
-      { name: "Branch Slash", acc: 95 }, { name: "Rebase Rush", acc: 80 }, { name: "Stash Smash", acc: 90 },
-      { name: "Force Push", acc: 70 }, { name: "Fork Bomb", acc: 60 }
-    ];
-    const moveOf = (id) => MOVES.find((m) => m.name === moves[id]) || MOVES[0];
-    function rollMoves() { for (const c of OCTOCATS) moves[c.id] = MOVES[Math.floor(Math.random() * MOVES.length)].name; }
-    rollMoves();
+    /* ---------- Battle data: GitHub types, moves and Octocat kits ---------- */
+    const TYPES = {
+      GIT: { label: "Git", color: "#f0883e" }, CODE: { label: "Code", color: "#2ea043" },
+      OPS: { label: "Ops", color: "#8957e5" }, SEC: { label: "Security", color: "#1f6feb" }
+    };
+    const STRONG = { CODE: "OPS", OPS: "SEC", SEC: "CODE" };     // Code beats Ops, Ops beats Security, Security beats Code
+    const typeMult = (mt, dt) => STRONG[mt] === dt ? 2 : STRONG[dt] === mt ? 0.5 : 1;
+    const MOVES = {
+      "Commit Strike":      { type: "GIT",  pow: 40,  acc: 100, desc: "A quick, reliable commit." },
+      "Merge Slam":         { type: "GIT",  pow: 65,  acc: 90,  desc: "Slams two branches together." },
+      "Stash Smash":        { type: "GIT",  pow: 50,  acc: 100, desc: "Pops a stash right in the face." },
+      "Rebase Rush":        { type: "GIT",  pow: 40,  acc: 100, prio: 1, desc: "Always goes first." },
+      "Copilot Assist":     { type: "GIT",  kind: "buff", acc: 100, desc: "Copilot suggests a combo: raises Attack." },
+      "Pull Request Punch": { type: "CODE", pow: 60,  acc: 95,  desc: "A well-reviewed punch." },
+      "Branch Slash":       { type: "CODE", pow: 70,  acc: 90,  crit: 0.25, desc: "High critical-hit ratio." },
+      "Refactor":           { type: "CODE", kind: "heal", acc: 100, heal: 0.4, desc: "Cleans up and restores 40% HP." },
+      "Deploy Blast":       { type: "OPS",  pow: 65,  acc: 95,  desc: "Ships straight to production." },
+      "Force Push":         { type: "OPS",  pow: 90,  acc: 75,  desc: "Powerful but risky." },
+      "Fork Bomb":          { type: "OPS",  pow: 120, acc: 55,  desc: "Huge damage, often fails." },
+      "Code Review":        { type: "SEC",  pow: 45,  acc: 100, debuff: true, desc: "Finds weaknesses: lowers Defense." },
+      "Dependabot":         { type: "SEC",  pow: 60,  acc: 95,  desc: "Patches in a hit." },
+      "Secret Scan":        { type: "SEC",  pow: 75,  acc: 85,  desc: "Exposes leaked secrets." }
+    };
+    // base stats: [HP, Attack, Defense, Speed]
+    const KITS = {
+      octocat:      { type: "GIT",  base: [65, 55, 55, 60], moves: ["Commit Strike", "Merge Slam", "Copilot Assist", "Rebase Rush"] },
+      mona:         { type: "GIT",  base: [60, 60, 50, 65], moves: ["Commit Strike", "Pull Request Punch", "Code Review", "Copilot Assist"] },
+      dinotocat:    { type: "CODE", base: [75, 70, 60, 40], moves: ["Branch Slash", "Pull Request Punch", "Stash Smash", "Refactor"] },
+      daftpunkcat:  { type: "OPS",  base: [55, 70, 50, 70], moves: ["Deploy Blast", "Force Push", "Merge Slam", "Copilot Assist"] },
+      jetpacktocat: { type: "OPS",  base: [55, 60, 45, 85], moves: ["Deploy Blast", "Rebase Rush", "Force Push", "Stash Smash"] },
+      spidertocat:  { type: "SEC",  base: [55, 65, 50, 80], moves: ["Secret Scan", "Code Review", "Rebase Rush", "Commit Strike"] },
+      scottocat:    { type: "CODE", base: [65, 60, 60, 55], moves: ["Pull Request Punch", "Branch Slash", "Merge Slam", "Refactor"] },
+      heisencat:    { type: "SEC",  base: [60, 75, 55, 50], moves: ["Secret Scan", "Dependabot", "Fork Bomb", "Code Review"] },
+      privateer:    { type: "SEC",  base: [70, 65, 60, 50], moves: ["Dependabot", "Secret Scan", "Force Push", "Stash Smash"] },
+      nyantocat:    { type: "CODE", base: [55, 55, 50, 90], moves: ["Branch Slash", "Rebase Rush", "Refactor", "Commit Strike"] },
+      chellocat:    { type: "OPS",  base: [60, 70, 55, 60], moves: ["Deploy Blast", "Fork Bomb", "Code Review", "Merge Slam"] },
+      defunktocat:  { type: "CODE", base: [70, 60, 65, 45], moves: ["Pull Request Punch", "Refactor", "Copilot Assist", "Merge Slam"] }
+    };
+    const kitOf = (id) => KITS[id] || KITS.octocat;
+    const teamLevel = () => 6 + collected.size * 3;           // your Octocats grow with every catch
+    const foeLevel = () => 4 + collected.size * 3;
     const save = () => {}; // progress is not persisted: every load starts with 0 Octocats
 
     const images = {};
@@ -995,9 +1064,17 @@
     $("title").addEventListener("click", startGame);
 
     /* ---------- Battles ---------- */
+    function makeSide(cat, lv, hp) {
+      const k = kitOf(cat.id), stat = (b) => Math.floor(b * 2 * lv / 100) + 5;
+      const max = Math.floor(k.base[0] * 2 * lv / 100) + lv + 10;
+      return { cat, lv, type: k.type, max, hp: hp == null ? max : hp, atk: stat(k.base[1]), def: stat(k.base[2]), spd: stat(k.base[3]), moves: k.moves, st: { atk: 0, def: 0 }, shown: hp == null ? 1 : hp / max };
+    }
+    const stage = (n) => n >= 0 ? (2 + n) / 2 : 2 / (2 - n);
+    const sideKey = (side) => side === battle.me ? "me" : "foe";
     function startPick(foe) {
       scene = "pick"; pendingFoe = foe; keys = {}; player.moving = false;
       $("pickTitle").textContent = "Choose an Octocat to battle " + foe.name;
+      $("pickRun").hidden = false; $("pickRun").textContent = "Run (Esc)";
       const g = $("pickGrid"); g.textContent = "";
       for (const c of OCTOCATS.filter((o) => collected.has(o.id))) g.appendChild(makeCard(c, true, { showMove: true, onClick: () => startBattle(c, foe) }));
       $("pick").hidden = false; g.firstChild.focus();
@@ -1008,42 +1085,176 @@
       let ux = player.x - fx, uy = player.y - fy; const n = Math.hypot(ux, uy) || 1; ux /= n; uy /= n;
       if (!ux && !uy) uy = 1;
       for (let i = 0; i < 12; i++) { const nx = player.x + ux * 4, ny = player.y + uy * 4; if (blocked(nx, ny)) break; player.x = nx; player.y = ny; }
-      encounterCd = 2.5; scene = "world"; battle = null; pendingFoe = null;
+      endBattle();
+    }
+    function endBattle() {
+      encounterCd = 2.5; scene = "world"; battle = null; pendingFoe = null; clearInterval(typeTimer);
       $("pick").hidden = true; $("battleUI").hidden = true; cv.focus(); Music.play("world");
     }
     function startBattle(fighter, foe) {
       scene = "battle"; $("pick").hidden = true; $("battleUI").hidden = false; $("toast").classList.remove("show"); toastT = 0;
-      battle = { fighter, foe, phase: "idle", t: 0, age: 0, hpShown: 1, parts: [], burst: false, pop: null, hit: false, msg: "A wild " + foe.name + " appeared! Go, " + fighter.name + "!" };
-      const m = moveOf(fighter.id);
-      $("fightBtn").textContent = "Use " + m.name + " (" + m.acc + "%)";
-      setBattleControls(true); setMsg(battle.msg); $("fightBtn").focus(); Music.play("battle");
+      const team = {};
+      for (const id of collected) team[id] = null;              // null = full HP
+      battle = { me: makeSide(fighter, teamLevel()), foe: makeSide(foe, foeLevel()), team, age: 0, phase: "intro", steps: [], step: null, stepT: 0, anim: null, after: null, parts: [], pops: [], picking: false };
+      setChoosing(false); Music.play("battle");
+      runSteps([{ msg: "A wild " + foe.name + " appeared!", dur: 1.4 }, { msg: "Go, " + fighter.name + "!", dur: 0.9 }], choose);
     }
-    function setBattleControls(on) { $("fightBtn").disabled = !on; }
-    function fight() {
-      if (scene !== "battle" || battle.phase !== "idle") return;
-      const m = moveOf(battle.fighter.id);
-      battle.hit = Math.random() * 100 < m.acc; battle.phase = "attack"; battle.t = 0; battle.burst = false;
-      battle.msg = battle.fighter.name + " used " + m.name + "!"; setMsg(battle.msg);
-      setBattleControls(false);
-      const hit = battle.hit; setTimeout(() => Music.sfx(hit ? "hit" : "miss"), 380);
+
+    /* step queue: each step shows a message for `dur` seconds and may start an animation */
+    function runSteps(list, then) { battle.steps = list; battle.after = then; nextStep(); }
+    function nextStep() {
+      const s = battle.steps.shift();
+      if (!s) { battle.step = null; battle.anim = null; const f = battle.after; battle.after = null; if (f) f(); return; }
+      battle.step = s; battle.stepT = 0;
+      if (s.start) s.start(s);
+      if (s.msg) setMsg(s.msg);
+      battle.anim = s.anim ? Object.assign({ t: 0 }, s.anim) : null;
+    }
+    function updateBattle(dt) {
+      battle.age += dt;
+      if (battle.anim) battle.anim.t += dt;
+      if (battle.step && (battle.stepT += dt) >= battle.step.dur) nextStep();
+    }
+
+    function setChoosing(on) {
+      const ui = $("battleUI"); ui.classList.toggle("busy", !on);
+      for (const btn of ui.querySelectorAll("button")) btn.disabled = !on;
+      if (!on) return;
+      const box = $("moves"); box.textContent = "";
+      battle.me.moves.forEach((name, i) => {
+        const m = MOVES[name], t = TYPES[m.type], eff = m.pow ? typeMult(m.type, battle.foe.type) : 1;
+        const btn = document.createElement("button"); btn.type = "button"; btn.className = "move"; btn.style.setProperty("--t", t.color);
+        btn.title = m.desc;
+        const info = m.kind === "heal" ? "heal 40%" : m.kind === "buff" ? "Attack ▲" : m.pow + " pow · " + m.acc + "%";
+        btn.innerHTML = "<span><kbd>" + (i + 1) + "</kbd> " + name + "</span><small>" + t.label + " · " + info + (eff > 1 ? ' <b class="up">▲ super</b>' : eff < 1 ? ' <b class="down">▼ weak</b>' : "") + "</small>";
+        btn.addEventListener("click", () => useMove(i));
+        box.appendChild(btn);
+      });
+      $("switchBtn").disabled = aliveTeam().filter((id) => id !== battle.me.cat.id).length === 0;
+      box.firstChild.focus();
+    }
+    function choose() { battle.phase = "choose"; setMsg("What will " + battle.me.cat.name + " do?"); setChoosing(true); }
+    function aliveTeam() { return [...collected].filter((id) => battle.team[id] !== 0); }
+
+    function aiMove(foe, me) {
+      if (foe.hp < foe.max * 0.35 && foe.moves.includes("Refactor") && Math.random() < 0.6) return "Refactor";
+      const score = (n) => { const m = MOVES[n]; return m.pow ? m.pow * (m.acc / 100) * typeMult(m.type, me.type) * (m.type === foe.type ? 1.5 : 1) : (m.kind === "buff" && foe.st.atk < 2 ? 45 : 0); };
+      if (Math.random() < 0.3) return foe.moves[Math.floor(Math.random() * foe.moves.length)];
+      return foe.moves.slice().sort((a, b) => score(b) - score(a))[0];
+    }
+    function resolve(a, d, m) {
+      if (m.kind === "heal") { const amt = Math.min(a.max - a.hp, Math.round(a.max * m.heal)); a.hp += amt; return { heal: amt }; }
+      if (m.kind === "buff") { const before = a.st.atk; a.st.atk = Math.min(3, a.st.atk + 1); return { buff: a.st.atk > before }; }
+      if (Math.random() * 100 >= m.acc) return { miss: true };
+      const crit = Math.random() < (m.crit || 0.0625), eff = typeMult(m.type, d.type), stab = m.type === a.type ? 1.5 : 1;
+      const atk = a.atk * stage(a.st.atk), def = d.def * stage(d.st.def);
+      let dmg = Math.floor((((2 * a.lv / 5 + 2) * m.pow * atk / def) / 50 + 2) * stab * eff * (crit ? 1.5 : 1) * (0.85 + Math.random() * 0.15));
+      dmg = Math.max(1, Math.min(d.hp, dmg)); d.hp -= dmg;
+      let lowered = false;
+      if (m.debuff && d.hp > 0 && d.st.def > -3) { d.st.def--; lowered = true; }
+      return { dmg, crit, eff, lowered };
+    }
+    function actionStep(attacker, moveName) {
+      return {
+        dur: 1.0,
+        start(s) {
+          const a = attacker(), d = a === battle.me ? battle.foe : battle.me, m = MOVES[moveName];
+          if (a.hp <= 0 || d.hp <= 0) { s.dur = 0; return; }
+          const who = sideKey(a), r = resolve(a, d, m), name = (who === "foe" ? "Wild " : "") + a.cat.name;
+          s.msg = name + " used " + moveName + "!";
+          const follow = [];
+          if (r.heal != null) {
+            s.anim = { kind: "heal", who }; Music.sfx("collect");
+            follow.push({ msg: r.heal ? a.cat.name + " restored " + r.heal + " HP!" : a.cat.name + "'s HP is already full!", dur: 0.9 });
+          } else if (r.buff != null) {
+            s.anim = { kind: "buff", who }; Music.sfx("collect");
+            follow.push({ msg: r.buff ? a.cat.name + "'s Attack rose!" : a.cat.name + "'s Attack won't go higher!", dur: 0.9 });
+          } else {
+            s.anim = { kind: "lunge", who, hit: !r.miss, dmg: r.dmg, crit: r.crit, eff: r.eff, color: TYPES[m.type].color };
+            setTimeout(() => Music.sfx(r.miss ? "miss" : "hit"), 420);
+            if (r.miss) follow.push({ msg: "...but it missed!", dur: 0.8 });
+            else {
+              if (r.crit) follow.push({ msg: "A critical hit!", dur: 0.8 });
+              if (r.eff > 1) follow.push({ msg: "It's super effective!", dur: 0.9 });
+              if (r.eff < 1) follow.push({ msg: "It's not very effective...", dur: 0.9 });
+              if (r.lowered) follow.push({ msg: d.cat.name + "'s Defense fell!", dur: 0.8 });
+              if (d.hp <= 0) follow.push({ msg: (d === battle.foe ? "Wild " : "") + d.cat.name + " fainted!", dur: 1.3, anim: { kind: "faint", who: sideKey(d) } });
+            }
+          }
+          battle.steps.unshift(...follow);
+        }
+      };
+    }
+    function useMove(i) {
+      if (scene !== "battle" || battle.phase !== "choose" || battle.picking) return;
+      const mine = battle.me.moves[i]; if (!mine) return;
+      battle.phase = "turn"; setChoosing(false);
+      const theirs = aiMove(battle.foe, battle.me);
+      const meFirst = (MOVES[mine].prio || 0) !== (MOVES[theirs].prio || 0)
+        ? (MOVES[mine].prio || 0) > (MOVES[theirs].prio || 0)
+        : battle.me.spd !== battle.foe.spd ? battle.me.spd > battle.foe.spd : Math.random() < 0.5;
+      const meStep = actionStep(() => battle.me, mine), foeStep = actionStep(() => battle.foe, theirs);
+      runSteps(meFirst ? [meStep, foeStep] : [foeStep, meStep], endTurn);
+    }
+    function endTurn() {
+      if (battle.foe.hp <= 0) return win();
+      if (battle.me.hp <= 0) return meFainted();
+      choose();
+    }
+    function win() {
+      const foe = battle.foe.cat;
+      battle.phase = "end"; Music.play(null); Music.sfx("win");
+      runSteps([
+        { msg: "Octodex activated...", dur: 2.2, anim: { kind: "catch" } },
+        { msg: "Gotcha! " + foe.name + " was added to your Octodex!", dur: 1.8, anim: { kind: "caught" } }
+      ], () => {
+        endBattle(); encounterCd = 0; collect(foe);
+        if (collected.size < OCTOCATS.length) toast(foe.name + " caught! Your Octocats are now Lv " + teamLevel() + ".");
+      });
+    }
+    function meFainted() {
+      battle.team[battle.me.cat.id] = 0;
+      if (aliveTeam().length) { openSwitch(true); return; }
+      battle.phase = "end";
+      runSteps([
+        { msg: "You have no Octocats left to battle!", dur: 1.6 },
+        { msg: "You hurry back to the Bay Promenade to rest...", dur: 1.6 }
+      ], () => { endBattle(); player.x = SPAWN.tx * TS + TS / 2; player.y = SPAWN.ty * TS + TS / 2; toast("Your Octocats are fully rested. Try again!"); });
+    }
+    function openSwitch(forced) {
+      if (scene !== "battle" || (!forced && battle.phase !== "choose")) return;
+      const options = aliveTeam().filter((id) => id !== battle.me.cat.id);
+      if (!options.length) return;
+      battle.picking = true; battle.forced = forced; setChoosing(false);
+      $("pickTitle").textContent = forced ? "Choose your next Octocat" : "Switch Octocat";
+      $("pickRun").hidden = forced; $("pickRun").textContent = "Back (Esc)";
+      const g = $("pickGrid"); g.textContent = "";
+      for (const id of options) {
+        const c = OCTOCATS.find((o) => o.id === id), side = makeSide(c, teamLevel(), battle.team[id]);
+        g.appendChild(makeCard(c, true, { hp: side.hp + "/" + side.max + " HP", onClick: () => doSwitch(c) }));
+      }
+      $("pick").hidden = false; g.firstChild.focus();
+    }
+    function closeSwitch() {
+      if (!battle || !battle.picking || battle.forced) return;
+      battle.picking = false; $("pick").hidden = true; setChoosing(true);
+    }
+    function doSwitch(c) {
+      const forced = battle.forced;
+      battle.picking = false; $("pick").hidden = true;
+      if (battle.me.hp > 0) battle.team[battle.me.cat.id] = battle.me.hp;
+      battle.me = makeSide(c, teamLevel(), battle.team[c.id]);
+      battle.phase = "turn";
+      const steps = [{ msg: "Go, " + c.name + "!", dur: 1.0, anim: { kind: "enter", who: "me" } }];
+      if (!forced) steps.push(actionStep(() => battle.foe, aiMove(battle.foe, battle.me)));
+      runSteps(steps, endTurn);
     }
     function runAway() {
       if (scene === "pick") leaveEncounter(pendingFoe);
-      else if (scene === "battle" && battle.phase !== "ko") leaveEncounter(battle.foe);
-    }
-    function updateBattle(dt) {
-      battle.t += dt; battle.age += dt;
-      if (battle.phase === "attack" && battle.t >= 0.8) {
-        battle.t = 0;
-        if (battle.hit) { battle.phase = "ko"; battle.msg = battle.foe.name + " fainted!"; Music.play(null); Music.sfx("win"); }
-        else { battle.phase = "miss"; battle.msg = battle.foe.name + " dodged! Try again."; }
-        setMsg(battle.msg);
-      } else if (battle.phase === "miss" && battle.t >= 0.9) {
-        battle.phase = "idle"; setBattleControls(true); $("fightBtn").focus();
-      } else if (battle.phase === "ko" && battle.t >= 1.4) {
-        const foe = battle.foe;
-        scene = "world"; battle = null; $("battleUI").hidden = true; cv.focus(); Music.play("world");
-        collect(foe);
+      else if (scene === "battle" && battle.picking) closeSwitch();
+      else if (scene === "battle" && battle.phase === "choose") {
+        battle.phase = "end"; setChoosing(false);
+        const foe = battle.foe.cat; runSteps([{ msg: "Got away safely!", dur: 0.9 }], () => leaveEncounter(foe));
       }
     }
     let typeTimer = null;
@@ -1052,7 +1263,6 @@
       let i = 0; el.textContent = "";
       typeTimer = setInterval(() => { el.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(typeTimer); }, 16);
     }
-    const levelOf = (c) => 5 + OCTOCATS.indexOf(c) * 3;
     const ease = (p) => 1 - Math.pow(1 - Math.min(1, Math.max(0, p)), 3);
     function drawCloud(c, x, y, s) {
       c.fillStyle = "rgba(255,255,255,.9)"; c.beginPath();
@@ -1078,24 +1288,43 @@
         c.fillStyle = "rgba(255,255,255,.4)"; c.fillRect(x + 3, y + 1, Math.max(0, w * frac - 6), 2);
       }
     }
-    function infoBox(c, x, y, w, h, who, frac, sub) {
+    function infoBox(c, x, y, w, h, side, mine) {
       c.save();
       c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.roundRect(x + 4, y + 5, w, h, 10); c.fill();
       const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, "#1c2438"); g.addColorStop(1, "#0d1220");
       c.fillStyle = g; c.strokeStyle = "#e6edf3"; c.lineWidth = 2.5; c.beginPath(); c.roundRect(x, y, w, h, 10); c.fill(); c.stroke();
-      c.fillStyle = who.color; c.beginPath(); c.roundRect(x + 8, y + 9, 5, h - 18, 3); c.fill();
+      c.fillStyle = side.cat.color; c.beginPath(); c.roundRect(x + 8, y + 9, 5, h - 18, 3); c.fill();
       c.fillStyle = "#fff"; c.font = "bold 16px ui-monospace, Menlo, monospace"; c.textAlign = "left"; c.textBaseline = "alphabetic";
-      c.fillText(who.name, x + 22, y + 24);
-      c.textAlign = "right"; c.fillStyle = "#cfe3ff"; c.font = "bold 12px ui-monospace, monospace"; c.fillText("Lv" + levelOf(who), x + w - 12, y + 24);
-      hpBar(c, x + 52, y + 34, w - 68, frac);
-      if (sub) { c.textAlign = "left"; c.fillStyle = "#8b949e"; c.font = "11px ui-monospace, monospace"; c.fillText(sub, x + 22, y + h - 10); }
+      c.fillText(side.cat.name, x + 22, y + 24);
+      const t = TYPES[side.type]; c.font = "bold 10px ui-monospace, monospace";
+      const tw = c.measureText(t.label).width + 12, tx = x + 28 + c.measureText(side.cat.name).width * 1.6;
+      c.fillStyle = t.color; c.beginPath(); c.roundRect(Math.min(tx, x + w - 60 - tw), y + 12, tw, 15, 7); c.fill();
+      c.fillStyle = "#fff"; c.textAlign = "center"; c.fillText(t.label, Math.min(tx, x + w - 60 - tw) + tw / 2, y + 23);
+      c.textAlign = "right"; c.fillStyle = "#cfe3ff"; c.font = "bold 12px ui-monospace, monospace"; c.fillText("Lv" + side.lv, x + w - 12, y + 24);
+      side.shown += (side.hp / side.max - side.shown) * Math.min(1, frameDt * 5);
+      hpBar(c, x + 52, y + 34, w - 68, Math.max(0, side.shown));
+      c.textAlign = "left"; c.font = "bold 11px ui-monospace, monospace";
+      let sx = x + 22;
+      if (mine) { c.fillStyle = "#e6edf3"; const txt = Math.max(0, Math.round(side.shown * side.max)) + " / " + side.max + " HP"; c.fillText(txt, sx, y + h - 10); sx += c.measureText(txt).width + 12; }
+      if (side.st.atk > 0) { c.fillStyle = "#ffa657"; c.fillText("ATK" + "▲".repeat(side.st.atk), sx, y + h - 10); sx += 52; }
+      if (side.st.def < 0) { c.fillStyle = "#79c0ff"; c.fillText("DEF" + "▼".repeat(-side.st.def), sx, y + h - 10); }
+      c.restore();
+    }
+    function drawOrb(c, x, y, r, rot, glow) {
+      c.save(); c.translate(x, y); c.rotate(rot);
+      if (glow) { c.fillStyle = `rgba(126,231,135,${glow})`; c.beginPath(); c.arc(0, 0, r * 1.8, 0, 7); c.fill(); }
+      const g = c.createLinearGradient(0, -r, 0, r); g.addColorStop(0, "#a371f7"); g.addColorStop(0.5, "#6e40c9"); g.addColorStop(0.5, "#e6edf3"); g.addColorStop(1, "#8b949e");
+      c.fillStyle = g; c.strokeStyle = "#0b0f19"; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); c.stroke();
+      c.beginPath(); c.moveTo(-r, 0); c.lineTo(r, 0); c.stroke();
+      c.fillStyle = "#e6edf3"; c.beginPath(); c.arc(0, 0, r * 0.32, 0, 7); c.fill(); c.stroke();
+      c.fillStyle = "#3fb950"; c.beginPath(); c.arc(0, 0, r * 0.15, 0, 7); c.fill();
       c.restore();
     }
     function renderBattle() {
-      const c = ctx, b = battle, FX = 470, FY = 132, PX = 170, PY = 250, age = b.age;
-      const p = b.phase === "attack" ? Math.min(1, b.t / 0.8) : 0;
+      const c = ctx, b = battle, FX = 470, FY = 132, PX = 170, PY = 238, age = b.age, A = b.anim;
+      const lp = A ? Math.min(1, A.t / 0.8) : 0;
       c.save();
-      if (b.phase === "attack" && b.hit && p > 0.5 && p < 0.9) c.translate((Math.random() - 0.5) * 12 * (1 - p), (Math.random() - 0.5) * 12 * (1 - p));
+      if (A && A.kind === "lunge" && A.hit && lp > 0.5 && lp < 0.9) { const k = (A.crit ? 18 : 11) * (1 - lp); c.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
       // sky, sun, clouds
       const sky = c.createLinearGradient(0, 0, 0, 150); sky.addColorStop(0, "#2f6fd0"); sky.addColorStop(0.6, "#8cc8ff"); sky.addColorStop(1, "#ffd9a8");
       c.fillStyle = sky; c.fillRect(-10, -10, VW + 20, 160);
@@ -1127,33 +1356,67 @@
 
       // sprites with intro slide-in
       const inF = ease(age / 0.7), inP = ease((age - 0.15) / 0.7);
-      let fx = FX + (1 - inF) * 320, fy = FY, fa = 1, px = PX - (1 - inP) * 360, py = PY;
-      drawPlatform(c, FX + (1 - inF) * 320, FY + 50, 105, 24);
-      drawPlatform(c, PX - (1 - inP) * 360, PY + 62, 125, 28);
-      if (b.phase === "attack") {
-        const l = Math.sin(p * Math.PI);
-        px += l * (FX - PX) * 0.7; py += l * (FY - PY) * 0.7 - Math.sin(p * Math.PI * 2) * 20;
-        if (b.hit && p > 0.5) fa = Math.sin(b.t * 50) > 0 ? 1 : 0.25;
-        if (!b.hit && p > 0.5) fx += Math.sin((p - 0.5) * Math.PI * 2) * 70;
-        if (p > 0.5 && !b.burst) {
-          b.burst = true;
-          for (let i = 0; i < (b.hit ? 34 : 10); i++) {
-            const a = Math.random() * Math.PI * 2, v = 80 + Math.random() * 220;
-            b.parts.push({ x: fx, y: fy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, life: 1, s: 4 + Math.random() * 6, c: b.hit ? ["#7ee787", "#3fb950", "#ffd33d", "#fff"][i % 4] : "#c9d1d9" });
+      const pos = { foe: { x: FX + (1 - inF) * 320, y: FY, a: 1 }, me: { x: PX - (1 - inP) * 360, y: PY, a: 1 } };
+      drawPlatform(c, pos.foe.x, FY + 50, 105, 24);
+      drawPlatform(c, pos.me.x, PY + 62, 125, 28);
+      for (const k of ["foe", "me"]) if (b[k].hp <= 0 && !(A && A.kind === "faint" && A.who === k)) pos[k].a = 0;
+      if (A && A.kind === "catch" || A && A.kind === "caught") pos.foe.a = 0;
+      if (A && A.kind === "lunge") {
+        const att = pos[A.who], tgt = pos[A.who === "me" ? "foe" : "me"], tk = A.who === "me" ? "foe" : "me";
+        const l = Math.sin(lp * Math.PI), dx = tgt.x - att.x, dy = tgt.y - att.y;
+        att.x += l * dx * 0.65; att.y += l * dy * 0.65 - Math.sin(lp * Math.PI * 2) * 20;
+        if (A.hit && lp > 0.5) tgt.a = b[tk].hp > 0 || lp < 0.95 ? (Math.sin(A.t * 50) > 0 ? 1 : 0.25) : tgt.a;
+        if (!A.hit && lp > 0.5) tgt.x += Math.sin((lp - 0.5) * Math.PI * 2) * 70 * (A.who === "me" ? 1 : -1);
+        if (lp > 0.5 && !A.burst) {
+          A.burst = true;
+          const T = tk === "foe" ? { x: FX, y: FY } : { x: PX, y: PY };
+          for (let i = 0; i < (A.hit ? (A.crit ? 50 : 32) : 10); i++) {
+            const an = Math.random() * Math.PI * 2, v = 80 + Math.random() * 230;
+            b.parts.push({ x: T.x, y: T.y, vx: Math.cos(an) * v, vy: Math.sin(an) * v - 80, life: 1, s: 4 + Math.random() * 6, c: A.hit ? [A.color, "#ffd33d", "#fff", A.color][i % 4] : "#c9d1d9" });
           }
-          b.pop = { text: b.hit ? "SUPER EFFECTIVE!" : "MISS!", t: 0, hit: b.hit };
+          if (A.hit) {
+            b.pops.push({ text: "-" + A.dmg, x: T.x + 40, y: T.y - 30, t: 0, col: "#ff7b72", size: 26 });
+            if (A.crit) b.pops.push({ text: "CRITICAL!", x: T.x, y: T.y - 80, t: -0.15, col: "#ffa657", size: 22 });
+            else if (A.eff > 1) b.pops.push({ text: "SUPER EFFECTIVE!", x: T.x, y: T.y - 80, t: -0.15, col: "#ffd33d", size: 22 });
+            else if (A.eff < 1) b.pops.push({ text: "not very effective", x: T.x, y: T.y - 80, t: -0.15, col: "#8b949e", size: 16 });
+          } else b.pops.push({ text: "MISS!", x: T.x, y: T.y - 70, t: 0, col: "#c9d1d9", size: 22 });
         }
       }
-      if (b.phase === "ko") { fa = Math.max(0, 1 - b.t / 1.0); fy += b.t * 40; }
-      c.globalAlpha = fa; drawOctocat(c, fx, fy, 100, b.foe.id, b.foe.color, time, images[b.foe.id]); c.globalAlpha = 1;
-      if (b.phase === "ko" && b.t < 0.8) {           // poof
-        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, r = 20 + b.t * 70; c.fillStyle = `rgba(255,255,255,${0.7 * (1 - b.t / 0.8)})`; c.beginPath(); c.arc(FX + Math.cos(a) * r, FY + 20 + Math.sin(a) * r * 0.5, 16 * (1 - b.t / 0.8) + 6, 0, 7); c.fill(); }
+      if (A && A.kind === "faint") { const q = pos[A.who]; q.a = Math.max(0, 1 - A.t / 0.9); q.y += A.t * 45; }
+      if (A && A.kind === "enter") pos.me.x -= (1 - ease(A.t / 0.5)) * 340;
+      c.globalAlpha = pos.foe.a; drawOctocat(c, pos.foe.x, pos.foe.y, 100, b.foe.cat.id, b.foe.cat.color, time, images[b.foe.cat.id]);
+      c.globalAlpha = pos.me.a; drawOctocat(c, pos.me.x, pos.me.y, 130, b.me.cat.id, b.me.cat.color, time, images[b.me.cat.id]); c.globalAlpha = 1;
+      if (A && A.kind === "faint" && A.t < 0.8) {          // poof
+        const q = A.who === "foe" ? { x: FX, y: FY } : { x: PX, y: PY };
+        for (let i = 0; i < 6; i++) { const an = i / 6 * Math.PI * 2, r = 20 + A.t * 70; c.fillStyle = `rgba(255,255,255,${0.7 * (1 - A.t / 0.8)})`; c.beginPath(); c.arc(q.x + Math.cos(an) * r, q.y + 20 + Math.sin(an) * r * 0.5, 16 * (1 - A.t / 0.8) + 6, 0, 7); c.fill(); }
       }
-      drawOctocat(c, px, py, 130, b.fighter.id, b.fighter.color, time, images[b.fighter.id]);
-      if (b.phase === "attack" && p > 0.45 && p < 0.85) {   // impact burst
-        c.save(); c.translate(fx, fy); c.rotate(b.t * 8); c.fillStyle = b.hit ? "#ffd33d" : "#8b949e"; c.beginPath();
-        for (let i = 0; i < 16; i++) { const r = i % 2 ? 22 : 50; c.lineTo(Math.cos(i * Math.PI / 8) * r, Math.sin(i * Math.PI / 8) * r); }
+      if (A && (A.kind === "heal" || A.kind === "buff")) {     // rising sparkles / arrows
+        const q = A.who === "foe" ? { x: FX, y: FY } : { x: PX, y: PY };
+        for (let i = 0; i < 10; i++) {
+          const k = (A.t * 1.2 + i / 10) % 1, x = q.x + Math.sin(i * 2.4) * 50, y = q.y + 50 - k * 110;
+          c.globalAlpha = Math.sin(k * Math.PI);
+          if (A.kind === "heal") { c.fillStyle = "#7ee787"; c.fillRect(x - 6, y - 2, 12, 4); c.fillRect(x - 2, y - 6, 4, 12); }
+          else { c.fillStyle = "#ffa657"; c.beginPath(); c.moveTo(x, y - 8); c.lineTo(x + 7, y + 2); c.lineTo(x - 7, y + 2); c.closePath(); c.fill(); }
+        }
+        c.globalAlpha = 1;
+      }
+      if (A && A.kind === "lunge" && lp > 0.45 && lp < 0.85) {   // impact burst
+        const T = A.who === "me" ? pos.foe : pos.me;
+        c.save(); c.translate(T.x, T.y); c.rotate(A.t * 8); c.fillStyle = A.hit ? (A.crit ? "#ffa657" : "#ffd33d") : "#8b949e"; c.beginPath();
+        for (let i = 0; i < 16; i++) { const r = i % 2 ? 22 : (A.crit ? 62 : 50); c.lineTo(Math.cos(i * Math.PI / 8) * r, Math.sin(i * Math.PI / 8) * r); }
         c.closePath(); c.fill(); c.fillStyle = "#fff"; c.beginPath(); c.arc(0, 0, 14, 0, 7); c.fill(); c.restore();
+      }
+      if (A && A.kind === "catch") {                            // Octodex orb wobbles three times
+        const drop = ease(A.t / 0.4), wob = A.t > 0.5 ? Math.sin((A.t - 0.5) * 11) * 0.45 * (Math.floor((A.t - 0.5) / 0.57) % 2 ? 0 : 1) : 0;
+        if (A.t < 0.35) { c.fillStyle = `rgba(163,113,247,${0.6 * (1 - A.t / 0.35)})`; c.beginPath(); c.arc(FX, FY, 60 * (1 - A.t / 0.35) + 10, 0, 7); c.fill(); }
+        drawOrb(c, FX, FY - 90 + drop * 130, 20, wob, 0);
+      }
+      if (A && A.kind === "caught") {
+        drawOrb(c, FX, FY + 40, 20, 0, 0.35 + Math.sin(A.t * 8) * 0.15);
+        for (let i = 0; i < 8; i++) {
+          const an = i / 8 * Math.PI * 2 + A.t, r = 30 + A.t * 40, sx = FX + Math.cos(an) * r, sy = FY + 40 + Math.sin(an) * r * 0.6, z = 5 * (1 - A.t / 1.8);
+          c.fillStyle = "#fff8c5"; c.fillRect(sx - z, sy - 1, z * 2, 2); c.fillRect(sx - 1, sy - z, 2, z * 2);
+        }
       }
       for (let i = b.parts.length - 1; i >= 0; i--) {
         const q = b.parts[i]; q.x += q.vx * frameDt; q.y += q.vy * frameDt; q.vy += 400 * frameDt; q.life -= frameDt * 1.3;
@@ -1161,24 +1424,20 @@
         c.globalAlpha = q.life; c.fillStyle = q.c; c.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
       }
       c.globalAlpha = 1;
-      if (b.pop) {
-        b.pop.t += frameDt;
-        const k = b.pop.t, s = 1 + Math.max(0, 0.4 - k) * 1.5;
-        if (k < 1.4) {
-          c.save(); c.translate(FX, FY - 70 - k * 20); c.scale(s, s); c.globalAlpha = Math.min(1, (1.4 - k) * 3);
-          c.font = "900 22px ui-monospace, Menlo, monospace"; c.textAlign = "center"; c.textBaseline = "middle";
-          c.lineWidth = 5; c.strokeStyle = "#0b0f19"; c.strokeText(b.pop.text, 0, 0);
-          c.fillStyle = b.pop.hit ? "#ffd33d" : "#c9d1d9"; c.fillText(b.pop.text, 0, 0); c.restore();
-        }
+      for (let i = b.pops.length - 1; i >= 0; i--) {
+        const q = b.pops[i]; q.t += frameDt;
+        if (q.t > 1.3) { b.pops.splice(i, 1); continue; }
+        if (q.t < 0) continue;
+        const s = 1 + Math.max(0, 0.35 - q.t) * 1.6;
+        c.save(); c.translate(q.x, q.y - q.t * 24); c.scale(s, s); c.globalAlpha = Math.min(1, (1.3 - q.t) * 3);
+        c.font = `900 ${q.size}px ui-monospace, Menlo, monospace`; c.textAlign = "center"; c.textBaseline = "middle";
+        c.lineWidth = 5; c.strokeStyle = "#0b0f19"; c.strokeText(q.text, 0, 0); c.fillStyle = q.col; c.fillText(q.text, 0, 0); c.restore();
       }
 
       // info boxes slide in after the sprites
       const ib = ease((age - 0.45) / 0.4);
-      const target = b.phase === "ko" ? 0 : 1;
-      b.hpShown += (target - b.hpShown) * Math.min(1, frameDt * 4);
-      const maxHp = 20 + levelOf(b.fighter) * 2;
-      infoBox(c, 16 - (1 - ib) * 320, 18, 270, 62, b.foe, b.hpShown, null);
-      infoBox(c, 352 + (1 - ib) * 320, 222, 272, 80, b.fighter, 1, "Move: " + moveOf(b.fighter.id).name + "   " + maxHp + "/" + maxHp);
+      infoBox(c, 16 - (1 - ib) * 320, 18, 280, 62, b.foe, false);
+      infoBox(c, 348 + (1 - ib) * 320, 234, 276, 80, b.me, true);
       c.restore();
 
       // encounter transition: flash, then black bars opening
@@ -1202,7 +1461,10 @@
       if (!found) { g.globalCompositeOperation = "source-in"; g.fillStyle = "#2a3247"; g.fillRect(0, 0, 64, 64); }
       card.appendChild(cc);
       const name = document.createElement("span"); name.textContent = found ? c.name : "???"; card.appendChild(name);
-      if (found && opts.showMove) { const mv = document.createElement("span"); mv.className = "mv"; mv.textContent = moveOf(c.id).name; card.appendChild(mv); }
+      if (found && (opts.showMove || opts.hp)) {
+        const k = kitOf(c.id), ty = document.createElement("span"); ty.className = "ty"; ty.textContent = TYPES[k.type].label; ty.style.setProperty("--t", TYPES[k.type].color); card.appendChild(ty);
+        const mv = document.createElement("span"); mv.className = opts.hp ? "hp" : "mv"; mv.textContent = opts.hp || k.moves[0]; card.appendChild(mv);
+      }
       card.addEventListener("click", opts.onClick);
       return card;
     }
@@ -1215,7 +1477,8 @@
           showMove: true, selected: selected === c.id,
           onClick: () => {
             selected = c.id;
-            $("detail").textContent = found ? c.name + " - " + c.where + " Move: " + moveOf(c.id).name + " (" + moveOf(c.id).acc + "% accuracy)." : "Not found yet. Keep exploring Fort Mason!";
+            const k = kitOf(c.id);
+            $("detail").textContent = found ? c.name + " (" + TYPES[k.type].label + " type, Lv " + teamLevel() + ") - " + c.where + " Moves: " + k.moves.join(", ") + "." : "Not found yet. Keep exploring Fort Mason!";
             renderInventory();
           }
         }));
@@ -1228,11 +1491,11 @@
     }
     $("invBtn").addEventListener("click", () => setInventory($("inv").hidden));
     $("closeInv").addEventListener("click", () => setInventory(false));
-    $("fightBtn").addEventListener("click", fight);
+    $("switchBtn").addEventListener("click", () => openSwitch(false));
     $("runBtn").addEventListener("click", runAway);
     $("pickRun").addEventListener("click", runAway);
     $("resetBtn").addEventListener("click", () => {
-      collected = new Set(); rollMoves(); save(); selected = null; updateCount(); renderInventory();
+      collected = new Set(); save(); selected = null; updateCount(); renderInventory();
       $("detail").textContent = "Progress reset. Go find them again!";
     });
 
@@ -1246,7 +1509,9 @@
       if (scene === "title") { if (k === "Enter" || k === " " || MOVE_KEYS.has(k)) { e.preventDefault(); startGame(); } return; }
       if (scene === "battle" || scene === "pick") {
         if (k === "Escape") runAway();
-        else if (scene === "battle" && (k === "f" || k === "1")) fight();
+        else if (scene === "battle" && !battle.picking && /^[1-4]$/.test(k)) useMove(+k - 1);
+        else if (scene === "battle" && k === "f") useMove(0);
+        else if (scene === "battle" && k === "s") openSwitch(false);
         return;
       }
       if (k === "i") { setInventory($("inv").hidden); return; }
@@ -1292,7 +1557,7 @@
       pad.prev = { A, B, Y, L, R, U, D };
       if (scene === "title") {
         if ((A && !was.A) || (Y && !was.Y)) startGame();
-      } else if (scene === "pick") {
+      } else if (scene === "pick" || (scene === "battle" && battle.picking)) {
         // D-pad / stick moves the highlight over the Octocat cards, A picks the fighter, B runs
         const cards = [...$("pickGrid").children];
         let i = Math.max(0, cards.indexOf(document.activeElement));
@@ -1305,8 +1570,17 @@
         if (A && !was.A && cards[i]) cards[i].click();
         else if (B && !was.B) runAway();
       } else if (scene === "battle") {
-        if (A && !was.A) fight();
-        else if (B && !was.B) runAway();
+        // D-pad moves between the move / switch / run buttons, A presses, B runs
+        const btns = [...$("battleUI").querySelectorAll("button:not(:disabled)")];
+        if (btns.length) {
+          let i = btns.indexOf(document.activeElement);
+          if (i < 0) i = 0;
+          if ((R && !was.R) || (D && !was.D)) i = Math.min(btns.length - 1, i + ((D && !was.D) && i < 2 ? 2 : 1));
+          if ((L && !was.L) || (U && !was.U)) i = Math.max(0, i - ((U && !was.U) && i >= 2 && i < 4 ? 2 : 1));
+          if (btns[i] !== document.activeElement) btns[i].focus();
+          if (A && !was.A) btns[i].click();
+        }
+        if (B && !was.B) runAway();
       } else if (scene === "world") {
         if (A && !was.A && inGame) setInventory(true);
         else if (B && !was.B && !inGame) setInventory(false);

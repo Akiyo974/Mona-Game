@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/extensions/monas-octoverse-arcade-starter/game.html"
       - ".github/workflows/pages.yml"
+      - "docs/screenshots/after-title.png"
   workflow_dispatch:
 
 permissions:
@@ -29,6 +30,7 @@ jobs:
         run: |
           mkdir -p _site
           cp .github/extensions/monas-octoverse-arcade-starter/game.html _site/index.html
+          cp docs/screenshots/after-title.png _site/og.png
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

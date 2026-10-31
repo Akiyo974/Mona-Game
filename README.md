@@ -2,7 +2,7 @@
 
 **A GitHub-themed monster-collector adventure set in San Francisco's Fort Mason, built as a Copilot App canvas extension.**
 
-Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great Meadow and the hill, and battle them with Git-powered moves (Commit Strike, Merge Slam, Force Push…) to fill your Octodex.
+Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great Meadow and the hill, and win turn-based battles with Git, Code, Ops and Security moves (Commit Strike, Pull Request Punch, Force Push, Secret Scan…) to fill your Octodex.
 
 ▶ **Play in the browser:** https://akiyo974.github.io/Mona-Game/
 (published by GitHub Pages from `main`; see [Publish on GitHub Pages](#publish-on-github-pages))
@@ -24,7 +24,15 @@ Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great 
 **Gameplay & polish**
 - Title screen, location banners, minimap and "!" alerts when a wild Octocat is near.
 - Your first Octocat is free; after that, pick one of yours and battle to catch the next.
-- Battle intro transition, animated HP bars, screen shake, particles, "SUPER EFFECTIVE!" pop-ups and typewriter dialogue.
+- Battle intro transition, animated HP bars, screen shake, particles, damage numbers and typewriter dialogue.
+
+**Battle system**
+- Four GitHub types with a rock-paper-scissors chart: **Code** beats **Ops**, **Ops** beats **Security**, **Security** beats **Code**; **Git** is neutral.
+- Every Octocat has its own type, base stats (HP, Attack, Defense, Speed) and four signature moves.
+- 14 moves with power, accuracy, same-type bonus, critical hits and effects: Rebase Rush always strikes first, Refactor heals, Copilot Assist raises Attack, Code Review lowers Defense, Fork Bomb hits hard but often fails.
+- Speed decides who moves first, the wild Octocat picks its moves to exploit your weaknesses, and move buttons flag super-effective (▲) and weak (▼) choices.
+- Switch Octocats mid-battle (the foe gets a free hit), keep fighting when one faints, and if your whole team faints you rest back at the Bay Promenade.
+- Win and an Octodex orb wobbles three times… Gotcha! Each catch levels up your whole team.
 - An Octodex with numbered entries and silhouettes for Octocats you have not found yet.
 - An 8-bit chiptune soundtrack (overworld + battle) and sound effects, all synthesised with Web Audio.
 - Keyboard, gamepad, and the Badger badge over USB serial.
@@ -45,7 +53,7 @@ Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great 
 | Alcatraz & the bay | GitHub Universe at Fort Mason Center |
 | --- | --- |
 | ![Alcatraz](docs/screenshots/after-alcatraz.png) | ![GitHub Universe signage](docs/screenshots/after-universe.png) |
-| **Contribution-graph flower beds** | **Super effective!** |
+| **Contribution-graph flower beds** | **Battle: damage, types and effects** |
 | ![Great Meadow](docs/screenshots/after-meadow.png) | ![Battle attack](docs/screenshots/after-attack.png) |
 
 ## Controls
@@ -54,7 +62,8 @@ Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great 
 | --- | --- | --- | --- |
 | Start | <kbd>Enter</kbd> / <kbd>Space</kbd> | A / Start | select |
 | Move | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows | D-pad / left stick | arrows |
-| Attack in battle | <kbd>F</kbd> or <kbd>1</kbd> | A | select |
+| Pick a move in battle | <kbd>1</kbd>–<kbd>4</kbd> (or <kbd>F</kbd> for the first) | D-pad + A | arrows + select |
+| Switch Octocat | <kbd>S</kbd> | D-pad + A | arrows + select |
 | Run from battle | <kbd>Esc</kbd> | B | back |
 | Octodex | <kbd>I</kbd> | Y / A | back closes |
 | Music on/off | <kbd>M</kbd> | | |
