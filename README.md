@@ -7,6 +7,10 @@ Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great 
 ▶ **Play in the browser:** https://akiyo974.github.io/Mona-Game/
 (published by GitHub Pages from `main`; see [Publish on GitHub Pages](#publish-on-github-pages))
 
+[![Fort Mason Octodex trailer](media/trailer-thumbnail-1280.jpg)](media/fort-mason-octodex-trailer.mp4)
+
+🎬 **Trailer:** 54 seconds recorded from the game, with its own music, ending on Badger mode: [watch it](media/fort-mason-octodex-trailer.mp4).
+
 ![Title screen](docs/screenshots/after-title.png)
 
 ## Team
@@ -84,21 +88,15 @@ Music starts on your first key press or click. The badge connects with the **Con
 
 The GitHub Universe '26 badge (GitHub Badger 2350) becomes a controller **and a second screen** for the game, over USB serial with MicroPython.
 
-| World: live mini-map | Battle |
-| --- | --- |
-| ![Badge showing the mini-map](media/badge-photo-map.jpg) | ![Badge showing a battle](media/badge-photo-battle.jpg) |
+| Title screen | World: live mini-map | Battle |
+| --- | --- | --- |
+| ![Badge showing the title screen](media/badge-photo-title.jpg) | ![Badge showing the mini-map](media/badge-photo-map.jpg) | ![Badge showing a battle](media/badge-photo-battle.jpg) |
 
 - **Controller:** every press and release of the badge's arrows, Select and Back drives the game, like a gamepad.
 - **Second screen:** the badge shows the title screen, a live mini-map (your position and the Octocats left, area, team level, Octodex progress), the Octodex, the pick menus and the battles (both HP bars, your four moves with type, power, accuracy and SUPER / weak, or the turn message).
-- **Play from the badge:** in battle, Up / Down choose a move, Select uses it, Left switches Octocat and Right runs; in a pick menu, Up / Down and Select pick an Octocat.
+- **Play from the badge:** in battle, Up / Down choose a move, Select uses it, Left switches Octocat and Right runs; in a pick menu, Up / Down and Select pick an Octocat (in a menu of more than nine, the arrows move the game's own highlight).
 
 To set it up, install the Controller app from [`badge/`](badge/README.md) on the badge, open **Controller**, then click **Connect badge** in the game (Chrome or Edge). The button reads **Badge: controller + screen**. A badge app without a screen keeps working as a plain controller. The messages between the game and the badge are described in the [badge protocol](docs/BADGE_PROTOCOL.md).
-
-## Trailer
-
-[![Fort Mason Octodex trailer](media/trailer-thumbnail-1280.jpg)](media/fort-mason-octodex-trailer.mp4)
-
-A 54-second trailer recorded from the game, with its own music, ending on Badger mode: [watch it](media/fort-mason-octodex-trailer.mp4).
 
 ## Run it
 
