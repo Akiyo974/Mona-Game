@@ -1561,7 +1561,7 @@
       const paused = !$("settings").hidden;
       if (!paused && scene !== "title" && scene !== "credits") playTime += dt;
       if (scene === "battle") { if (!paused) updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
-      else if (scene === "inside") { if (!paused && $("inv").hidden) updateInside(dt); renderInside(); }
+      else if (scene === "inside") { if (!paused && $("inv").hidden) updateInside(dt); room ? renderInside() : render(); }   // walking out clears the room mid-frame
       else { if (scene === "world" && $("inv").hidden && !paused) update(dt); render(); }
       if (toastT <= 0 && achQueue.length && (scene === "world" || scene === "inside" || scene === "credits")) { const a = achQueue.shift(); toast("🏆 Achievement unlocked: " + a.icon + " " + a.name, 2.8); }
       if (toastT > 0 && scene !== "world" && (toastT -= dt) <= 0) $("toast").classList.remove("show");
