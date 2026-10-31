@@ -8,6 +8,10 @@
   <meta name="description" content="Catch all twelve GitHub Octocats around San Francisco's Fort Mason and battle them with Git, Code, Ops and Security moves. A Copilot App canvas game.">
   <meta name="application-name" content="Fort Mason Octodex">
   <meta name="theme-color" content="#0b1020">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Octodex">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="color-scheme" content="dark">
   <meta name="keywords" content="GitHub, Octocat, Octodex, Mona, Copilot, San Francisco, Fort Mason, GitHub Universe, game">
   <meta property="og:type" content="website">
@@ -179,6 +183,26 @@
     .credits p, .credits ul { margin: 0; padding: 0; color: #c9d1d9; font: 0.82rem/1.5 var(--mono); list-style: none; }
     .credits .kicker { color: var(--gold); font: 700 0.7rem/1 var(--mono); letter-spacing: 0.35em; text-transform: uppercase; }
     .credits button { margin-top: 0.9rem; }
+    .credits .time { color: var(--gold); font-weight: 800; }
+    .card.shiny { border-color: var(--gold); box-shadow: 0 0 14px -4px var(--gold); }
+    .card .star { position: absolute; top: 0.2rem; right: 0.45rem; color: var(--gold); font-size: 0.85rem; }
+    .overlay h3 { margin: 0.2rem 0 0; font: 800 0.85rem/1.2 var(--mono); }
+    .overlay h3 span { color: var(--green-hi); }
+    .ach { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: 0.45rem; }
+    .ach div { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.55rem; background: rgba(13,17,23,.75); border: 1px solid var(--edge); border-radius: 0.6rem; }
+    .ach div.got { border-color: var(--gold); box-shadow: inset 0 0 12px -6px var(--gold); }
+    .ach div:not(.got) { opacity: 0.5; filter: grayscale(1); }
+    .ach i { font-size: 1.35rem; font-style: normal; }
+    .ach b { display: block; font: 800 0.72rem/1.2 var(--mono); }
+    .ach small { display: block; color: var(--muted); font: 0.62rem/1.3 var(--mono); }
+    .set { display: grid; gap: 0.7rem; max-width: 30rem; font: 0.82rem/1.4 var(--mono); }
+    .set label { display: grid; gap: 0.3rem; }
+    .set label.chk { display: flex; align-items: center; gap: 0.5rem; }
+    .set input[type=range] { width: 100%; accent-color: var(--green); }
+    .set input[type=checkbox] { width: 1.1rem; height: 1.1rem; accent-color: var(--green); }
+    .keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.35rem; }
+    .keys div { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0.25rem 0.25rem 0.6rem; background: rgba(13,17,23,.75); border: 1px solid var(--edge); border-radius: 0.5rem; }
+    .keys button { min-width: 4.5rem; padding: 0.35rem 0.6rem; }
     /* on-screen D-pad and A/B buttons, shown on touch screens */
     .touchpad { display: none; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 0.8rem; padding: 0 0.3rem; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
     .touch .touchpad { display: flex; }
@@ -224,7 +248,7 @@
       </div>
       <div class="controls">
         <div class="dex"><span class="count">OCTODEX <b><span id="count">0</span></b>/<span id="total">0</span></span><span class="bar"><span id="dexFill"></span></span></div>
-        <button id="invBtn" type="button" class="secondary">Inventory (I)</button> <button id="muteBtn" type="button" class="secondary">Music: On (M)</button> <button id="badgeBtn" type="button" class="secondary">Connect badge</button>
+        <button id="invBtn" type="button" class="secondary">Inventory (I)</button> <button id="muteBtn" type="button" class="secondary">Music: On (M)</button> <button id="setBtn" type="button" class="secondary">Settings</button> <button id="installBtn" type="button" class="secondary" hidden>Install app</button> <button id="badgeBtn" type="button" class="secondary">Connect badge</button>
       </div>
     </div>
     <div class="stage">
@@ -255,13 +279,28 @@
         <div class="grid" id="grid"></div>
         <p id="detail">Select an Octocat to see where you found it.</p>
         <p id="bag" class="help"></p>
+        <h3>Achievements <span id="achCount"></span></h3>
+        <div class="ach" id="ach"></div>
         <div><button id="resetBtn" type="button" class="secondary">Reset progress</button> <button id="creditsAgain" type="button" class="secondary" hidden>Credits</button></div>
+      </section>
+      <section class="overlay" id="settings" hidden aria-label="Settings">
+        <header><h2>Settings</h2><button id="closeSet" type="button">Close (Esc)</button></header>
+        <div class="set">
+          <label>Music volume <input type="range" id="volMusic" min="0" max="100"></label>
+          <label>Sound effects volume <input type="range" id="volSfx" min="0" max="100"></label>
+          <label class="chk"><input type="checkbox" id="cbColors"> Colour-blind friendly type colours</label>
+          <label class="chk"><input type="checkbox" id="cbCalm"> Reduce screen shake and flashes</label>
+          <h3>Keys</h3>
+          <div class="keys" id="keys"></div>
+          <p class="help">Click a key, then press the new one (Esc cancels). Arrow keys always move.</p>
+        </div>
       </section>
       <section class="overlay credits" id="credits" hidden aria-label="Credits">
         <div class="roll">
           <p class="kicker">Merge conflict resolved</p>
           <h2>Thanks for playing!</h2>
           <p>All 12 Octocats caught. GitHub Universe ships on time.</p>
+          <p id="creditsTime" class="time"></p>
           <canvas id="creditsArt" width="420" height="96" aria-hidden="true"></canvas>
           <h3>Made by</h3>
           <ul>
@@ -283,7 +322,7 @@
       <div class="dpad" id="dpad"><i class="u">▲</i><i class="l">◀</i><i class="r">▶</i><i class="d">▼</i></div>
       <div class="ab"><button type="button" class="secondary" data-key="back" tabindex="-1">B</button><button type="button" data-key="select" tabindex="-1">A</button></div>
     </div>
-    <p class="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. Walk into an Octocat to collect it. <kbd>I</kbd> opens the Octodex, <kbd>M</kbd> toggles music, <kbd>1</kbd>–<kbd>4</kbd> pick a move in battle, <kbd>H</kbd> uses a Hotfix, <kbd>R</kbd> a Revert, <kbd>S</kbd> switches Octocat. Code beats Ops, Ops beats Security, Security beats Code. Your progress is saved in this browser.</p>
+    <p class="help" id="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. Walk into an Octocat to collect it. <kbd>I</kbd> opens the Octodex, <kbd>M</kbd> toggles music, <kbd>1</kbd>–<kbd>4</kbd> pick a move in battle, <kbd>H</kbd> uses a Hotfix, <kbd>R</kbd> a Revert, <kbd>S</kbd> switches Octocat. Code beats Ops, Ops beats Security, Security beats Code. Your progress is saved in this browser.</p>
   </main>
   <script>
     // Drop in your own art here: paths/URLs relative to this page. Leave null to use the built-in placeholders.
@@ -316,6 +355,19 @@
       { id: "defunktocat", name: "Defunktocat",   tx: 23, ty: 25, color: "#a371f7", where: "At the south end of the Great Meadow path." }
     ];
     const SPAWN = { tx: 23, ty: 9 };
+    // Trainers: beat them for items and a hint about where an Octocat hides
+    const TRAINERS = [
+      { id: "intern", name: "Intern Ida", short: "Ida", tx: 12, ty: 9, team: ["nyantocat"], lv: -2, reward: { hotfix: 1, revert: 0 },
+        hi: "It's my first week! Can I battle you?", bye: "You're good! Take this Hotfix.", tip: "Press H in battle for a Hotfix when your HP is low.",
+        pal: { pack: "#d29922", arm: "#2ea043", hood: "#3fb950", stripe: "#7ee787", skin: "#e0ac69", hair: "#8d5524", cap: "#1f6feb", visor: "#0d419d" } },
+      { id: "senior", name: "Senior Dev Sam", short: "Sam", tx: 29, ty: 20, team: ["heisencat", "chellocat"], lv: 0, reward: { hotfix: 2, revert: 1 },
+        hi: "Ship it? Only after you pass my review.", bye: "LGTM. Here are some items.", tip: "Code beats Ops, Ops beats Security, Security beats Code.",
+        pal: { pack: "#1f6feb", arm: "#21262d", hood: "#30363d", stripe: "#6e7681", skin: "#f5c9a6", hair: "#d0d7de", cap: "#f0883e", visor: "#bd561d" } },
+      { id: "staff", name: "Staff Engineer Robin", short: "Robin", tx: 20, ty: 28, team: ["privateer", "daftpunkcat", "dinotocat"], lv: 2, reward: { hotfix: 2, revert: 1 },
+        hi: "Let's see how you handle production.", bye: "Impressive. You're ready for the Merge Conflict.", tip: "A Revert undoes a bad turn, even a critical hit.",
+        pal: { pack: "#3fb950", arm: "#bf4b8a", hood: "#f778ba", stripe: "#ffadda", skin: "#8d5524", hair: "#0d1117", cap: "#8957e5", visor: "#553098" } }
+    ];
+    const TRAINER_POSE = { dir: "down", moving: false };
 
     function buildMap() {
       rect(0, 0, MW, 8, "~");                       // San Francisco Bay
@@ -339,6 +391,7 @@
         const nearCat = OCTOCATS.some((c) => Math.abs(c.tx - x) <= 1 && Math.abs(c.ty - y) <= 1);
         if (grid[y][x] === "." && !nearCat && rnd() < 0.14) grid[y][x] = "T";
       }
+      for (const tr of TRAINERS) for (let y = tr.ty - 1; y <= tr.ty + 1; y++) for (let x = tr.tx - 1; x <= tr.tx + 1; x++) if (grid[y][x] === "T") grid[y][x] = ".";
       rect(0, MH - 1, MW, 1, "T");
     }
     buildMap();
@@ -544,7 +597,7 @@
     /* ---------- State ---------- */
     let collected = new Set(), keys = {}, last = 0, toastT = 0, selected = null, time = 0;
     let scene = "title", battle = null, encounterCd = 0, pendingFoe = null;
-    let bag = { hotfix: 0, revert: 0 }, bossBeaten = false, saveT = 0;
+    let bag = { hotfix: 0, revert: 0 }, bossBeaten = false, saveT = 0, shinies = new Set(), trainersBeaten = new Set(), playTime = 0;
     const player = { x: SPAWN.tx * TS + TS / 2, y: SPAWN.ty * TS + TS / 2, dir: "down", moving: false, w: 20, h: 12, speed: 150 };
     /* ---------- Battle data: GitHub types, moves and Octocat kits ---------- */
     const TYPES = {
@@ -591,15 +644,45 @@
     const BOSS = { id: "mergeconflict", name: "Merge Conflict", tx: 15, ty: 15, color: "#f85149", where: "Blocking the doors of Fort Mason Center." };
     const BOSS_TYPES = ["CODE", "OPS", "SEC"];               // its changes keep flipping between types
     const bossReady = () => collected.size === OCTOCATS.length && !bossBeaten;
+    const SHINY_RATE = 0.05;                                  // about 1 wild Octocat in 20 is a golden "shiny"
     const kitOf = (id) => KITS[id] || KITS.octocat;
     const teamLevel = () => 6 + collected.size * 3;           // your Octocats grow with every catch
     const foeLevel = () => 4 + collected.size * 3;
     /* Progress (Octodex, items, boss, position) lives in this browser's localStorage */
     const SAVE_KEY = "fort-mason-octodex";
     function save() {
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, dex: [...collected], bag, boss: bossBeaten, at: [Math.round(player.x), Math.round(player.y)] })); }
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, dex: [...collected], bag, boss: bossBeaten, at: [Math.round(player.x), Math.round(player.y)], shiny: [...shinies], trainers: [...trainersBeaten], time: Math.round(playTime) })); }
       catch (e) { /* storage blocked: the game still works, it just won't remember */ }
     }
+    /* Achievements, GitHub-profile style. They live outside the save so "Reset progress" keeps them */
+    const ACHIEVEMENTS = [
+      { id: "first", icon: "🌱", name: "First Commit", how: "Catch your first Octocat." },
+      { id: "shark", icon: "🦈", name: "Pull Shark", how: "Catch 5 Octocats." },
+      { id: "vault", icon: "🧊", name: "Arctic Code Vault", how: "Complete the Octodex." },
+      { id: "quick", icon: "🤠", name: "Quickdraw", how: "Win a wild battle in one turn." },
+      { id: "brain", icon: "🧠", name: "Galaxy Brain", how: "Land 10 super-effective hits." },
+      { id: "travel", icon: "⏪", name: "Time Traveler", how: "Use a Revert." },
+      { id: "mentor", icon: "🎓", name: "Mentor", how: "Beat all three trainers." },
+      { id: "star", icon: "⭐", name: "Starstruck", how: "Catch a shiny Octocat." },
+      { id: "pair", icon: "👯", name: "Pair Extraordinaire", how: "Resolve the Merge Conflict with 2 Octocats or fewer." },
+      { id: "yolo", icon: "🎲", name: "YOLO", how: "Resolve the Merge Conflict without items." },
+      { id: "speed", icon: "⏱️", name: "Speedrunner", how: "Resolve the Merge Conflict in under 15 minutes." }
+    ];
+    const META_KEY = "fort-mason-octodex-meta", achQueue = [];
+    let meta = { ach: [], best: null, supers: 0 };
+    function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) { /* storage blocked */ } }
+    function loadMeta() {
+      try {
+        const d = JSON.parse(localStorage.getItem(META_KEY));
+        if (d && Array.isArray(d.ach)) meta = { ach: d.ach.filter((id) => ACHIEVEMENTS.some((a) => a.id === id)), best: Number.isFinite(d.best) ? d.best : null, supers: d.supers | 0 };
+      } catch (e) { /* storage blocked */ }
+    }
+    function unlock(id) {
+      if (meta.ach.includes(id)) return;
+      meta.ach.push(id); saveMeta(); achQueue.push(ACHIEVEMENTS.find((a) => a.id === id));
+      if (!$("inv").hidden) renderInventory();
+    }
+    const fmtTime = (secs) => { const m = Math.floor(secs / 60), r = String(Math.floor(secs % 60)).padStart(2, "0"); return m >= 60 ? Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + ":" + r : m + ":" + r; };
     function loadSave() {
       let d = null;
       try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return; }
@@ -607,6 +690,9 @@
       collected = new Set((d.dex || []).filter((id) => OCTOCATS.some((c) => c.id === id)));
       bag = { hotfix: Math.max(0, d.bag && d.bag.hotfix | 0), revert: Math.max(0, d.bag && d.bag.revert | 0) };
       bossBeaten = !!d.boss && collected.size === OCTOCATS.length;
+      shinies = new Set((d.shiny || []).filter((id) => collected.has(id)));
+      trainersBeaten = new Set((d.trainers || []).filter((id) => TRAINERS.some((t) => t.id === id)));
+      playTime = Number.isFinite(d.time) ? d.time : 0;
       const [x, y] = d.at || [];
       if (Number.isFinite(x) && Number.isFinite(y) && !blocked(x, y)) { player.x = x; player.y = y; }
     }
@@ -639,6 +725,24 @@
       c.fillStyle = "#7ee787"; c.fillText("<<<<<<<", x - s * 0.24, y - s * 0.56);
       c.fillStyle = "#ff7b72"; c.fillText(">>>>>>>", x + s * 0.24, y + s * 0.56);
       c.fillStyle = "#f2cc60"; for (let k = -4; k <= 4; k++) c.fillRect(x - s * 0.006, y + k * s * 0.09 - s * 0.025, s * 0.012, s * 0.05);
+      c.restore();
+    }
+    const shinyCv = document.createElement("canvas"), shinyCtx = shinyCv.getContext("2d");
+    function drawCat(c, x, y, s, cat, t, shiny) {
+      if (!shiny) return drawOctocat(c, x, y, s, cat.id, cat.color, t, images[cat.id]);
+      // shiny: the same Octocat with a golden coat and twinkling stars
+      const n = Math.ceil(s * 1.4), g = shinyCtx;
+      if (shinyCv.width !== n) shinyCv.width = shinyCv.height = n;
+      g.clearRect(0, 0, n, n);
+      drawOctocat(g, n / 2, n / 2, s, cat.id, cat.color, t, images[cat.id]);
+      g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(242,204,96,.45)"; g.fillRect(0, 0, n, n); g.globalCompositeOperation = "source-over";
+      c.drawImage(shinyCv, x - n / 2, y - n / 2);
+      c.save(); c.fillStyle = "#fff8c5";
+      for (let k = 0; k < 4; k++) {
+        const a = t * 1.7 + k * 1.57, sx = x + Math.cos(a) * s * 0.48, sy = y - s * 0.08 + Math.sin(a) * s * 0.34, z = s * 0.045 * (1.2 + Math.sin(t * 6 + k));
+        c.beginPath(); c.moveTo(sx, sy - z * 2); c.lineTo(sx + z * 0.5, sy - z * 0.5); c.lineTo(sx + z * 2, sy); c.lineTo(sx + z * 0.5, sy + z * 0.5);
+        c.lineTo(sx, sy + z * 2); c.lineTo(sx - z * 0.5, sy + z * 0.5); c.lineTo(sx - z * 2, sy); c.lineTo(sx - z * 0.5, sy - z * 0.5); c.closePath(); c.fill();
+      }
       c.restore();
     }
     function drawOctocat(c, x, y, s, id, color, t, img) {
@@ -771,9 +875,10 @@
       }
       c.restore();
     }
-    function drawPlayer(c, x, y, t) {
-      if (images.player) { c.drawImage(images.player, x - 16, y - 28, 32, 32); return; }
-      const d = player.dir, walk = player.moving ? Math.sin(t * 14) : 0, bob = player.moving ? Math.abs(walk) * -1.5 : Math.sin(t * 2.5) * 0.6;
+    const PLAYER_PAL = { pack: "#238636", arm: "#6e40c9", hood: "#8957e5", stripe: "#a371f7", skin: "#f5c9a6", hair: "#3b2416", cap: "#da3633", visor: "#a40e26" };
+    function drawPlayer(c, x, y, t, who = player, pal = PLAYER_PAL) {
+      if (images.player && who === player) { c.drawImage(images.player, x - 16, y - 28, 32, 32); return; }
+      const d = who.dir, walk = who.moving ? Math.sin(t * 14) : 0, bob = who.moving ? Math.abs(walk) * -1.5 : Math.sin(t * 2.5) * 0.6;
       const side = d === "left" || d === "right", o = d === "left" ? -1 : 1;
       c.save(); c.translate(Math.round(x), Math.round(y));
       c.fillStyle = "rgba(0,0,0,.32)"; c.beginPath(); c.ellipse(0, 1, 11, 4.5, 0, 0, 7); c.fill();
@@ -785,26 +890,26 @@
       c.fillStyle = "#f0f6fc"; c.fillRect(-7 + (side ? l1 * 0.5 : 0), -2 - (side ? 0 : Math.max(0, l1)), 6, 2); c.fillRect(1 + (side ? l2 * 0.5 : 0), -2 - (side ? 0 : Math.max(0, l2)), 6, 2);
       c.translate(0, bob);
       // backpack (visible from behind and the side)
-      if (d === "up") shape("#238636", () => c.roundRect(-8, -24, 16, 13, 4));
-      if (side) shape("#238636", () => c.roundRect(-o * 10 - 4, -23, 8, 12, 3));
+      if (d === "up") shape(pal.pack, () => c.roundRect(-8, -24, 16, 13, 4));
+      if (side) shape(pal.pack, () => c.roundRect(-o * 10 - 4, -23, 8, 12, 3));
       // arms
       const a = side ? walk * 4 : walk * 2;
-      shape("#6e40c9", () => { if (!side) { c.roundRect(-12, -22 + a, 4, 10, 2); c.roundRect(8, -22 - a, 4, 10, 2); } else c.roundRect(-2 + a, -22, 4, 10, 2); });
+      shape(pal.arm, () => { if (!side) { c.roundRect(-12, -22 + a, 4, 10, 2); c.roundRect(8, -22 - a, 4, 10, 2); } else c.roundRect(-2 + a, -22, 4, 10, 2); });
       // hoodie
-      shape("#8957e5", () => c.roundRect(-9, -24, 18, 16, 5));
-      c.fillStyle = "#a371f7"; c.fillRect(-7, -22, 3, 11);
+      shape(pal.hood, () => c.roundRect(-9, -24, 18, 16, 5));
+      c.fillStyle = pal.stripe; c.fillRect(-7, -22, 3, 11);
       if (d === "down") { c.fillStyle = "#e6edf3"; c.fillRect(-1, -22, 2, 5); c.fillStyle = "#7ee787"; c.beginPath(); c.arc(0, -14, 2.5, 0, 7); c.fill(); }
       // head
-      shape("#f5c9a6", () => c.arc(0, -30, 8, 0, 7));
+      shape(pal.skin, () => c.arc(0, -30, 8, 0, 7));
       // hair
-      c.fillStyle = "#3b2416";
+      c.fillStyle = pal.hair;
       if (d === "up") { c.beginPath(); c.arc(0, -30, 8, 0, 7); c.fill(); }
       else if (side) { c.beginPath(); c.arc(-o * 2, -32, 7.5, Math.PI * 0.9, Math.PI * 2.1); c.fill(); }
       else { c.fillRect(-8, -32, 3, 6); c.fillRect(5, -32, 3, 6); }
       // cap with visor
-      shape("#da3633", () => c.arc(0, -32, 8.5, Math.PI, 0));
+      shape(pal.cap, () => c.arc(0, -32, 8.5, Math.PI, 0));
       c.fillStyle = "#fff"; if (d !== "up") { c.beginPath(); c.arc(side ? o * 2 : 0, -36, 2.5, 0, 7); c.fill(); }
-      c.fillStyle = "#a40e26";
+      c.fillStyle = pal.visor;
       if (d === "down") c.fillRect(-8, -33, 16, 3);
       else if (side) c.fillRect(o > 0 ? 3 : -13, -33, 10, 3);
       else c.fillRect(-8, -32, 16, 2);
@@ -819,7 +924,8 @@
 
     /* ---------- Music: 8-bit chiptune synth (Web Audio, no audio files) ---------- */
     const Music = (() => {
-      let ac = null, master = null, analyser = null, noiseBuf = null, muted = false, wanted = "world", cur = null;
+      let ac = null, master = null, analyser = null, noiseBuf = null, muted = false, wanted = "world", cur = null, musicBus = null, sfxBus = null;
+      const vol = { music: 0.7, sfx: 0.8 };
       const waves = {}, mtof = (n) => 440 * Math.pow(2, (n - 69) / 12);
       const LEN = 128; // 8 bars of 16 steps
 
@@ -829,6 +935,8 @@
         const comp = ac.createDynamicsCompressor(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.5;
         analyser = ac.createAnalyser(); analyser.fftSize = 1024;
         master.connect(comp); comp.connect(analyser); comp.connect(ac.destination);
+        musicBus = ac.createGain(); sfxBus = ac.createGain(); musicBus.gain.value = vol.music; sfxBus.gain.value = vol.sfx;
+        musicBus.connect(master); sfxBus.connect(master);
         noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
         const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       }
@@ -934,7 +1042,7 @@
       }
       function startInst(name) {
         const tr = TRACKS[name], bus = ac.createGain();
-        bus.gain.setValueAtTime(0, ac.currentTime); bus.gain.linearRampToValueAtTime(1, ac.currentTime + 0.4); bus.connect(master);
+        bus.gain.setValueAtTime(0, ac.currentTime); bus.gain.linearRampToValueAtTime(1, ac.currentTime + 0.4); bus.connect(musicBus);
         const inst = { name, tr, bus, step: 0, nextT: ac.currentTime + 0.08, d: 60 / tr.bpm / 4 };
         inst.timer = setInterval(() => tick(inst), 40); tick(inst); cur = inst;
       }
@@ -953,18 +1061,22 @@
       function sfx(name) {
         if (!ac || ac.state !== "running") return;
         const t = ac.currentTime + 0.01;
-        if (name === "hit") { noise(master, t, 0.2, 0.3, "bandpass", 900); tone(master, "square", 700, t, 0.25, 0.18, { to: 90 }); }
-        else if (name === "miss") tone(master, "triangle", 320, t, 0.3, 0.25, { to: 110 });
-        else if (name === "collect") [72, 76, 79, 84].forEach((n, i) => tone(master, 0.25, mtof(n), t + i * 0.07, 0.18, 0.12));
-        else if (name === "win") [[72, 0], [72, 0.11], [72, 0.22], [76, 0.33], [79, 0.5], [84, 0.7]].forEach(([n, o]) => { tone(master, 0.25, mtof(n), t + o, 0.28, 0.12); tone(master, 0.5, mtof(n - 12), t + o, 0.28, 0.07); });
+        if (name === "hit") { noise(sfxBus, t, 0.2, 0.3, "bandpass", 900); tone(sfxBus, "square", 700, t, 0.25, 0.18, { to: 90 }); }
+        else if (name === "miss") tone(sfxBus, "triangle", 320, t, 0.3, 0.25, { to: 110 });
+        else if (name === "collect") [72, 76, 79, 84].forEach((n, i) => tone(sfxBus, 0.25, mtof(n), t + i * 0.07, 0.18, 0.12));
+        else if (name === "win") [[72, 0], [72, 0.11], [72, 0.22], [76, 0.33], [79, 0.5], [84, 0.7]].forEach(([n, o]) => { tone(sfxBus, 0.25, mtof(n), t + o, 0.28, 0.12); tone(sfxBus, 0.5, mtof(n - 12), t + o, 0.28, 0.07); });
       }
       function toggleMute() {
         muted = !muted;
         if (master) master.gain.setTargetAtTime(muted ? 0 : 0.5, ac.currentTime, 0.04);
-        $("muteBtn").textContent = muted ? "Music: Off (M)" : "Music: On (M)";
+        refreshKeyLabels();
       }
       function peak() { const a = new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(a); return Math.max(...a.map(Math.abs)); }
-      return { play, unlock, sfx, toggleMute, peak, get info() { return { ctx: ac && ac.state, track: cur && cur.name, step: cur && cur.step, muted }; } };
+      function setVolumes(m, fx) {
+        vol.music = m; vol.sfx = fx;
+        if (musicBus) { musicBus.gain.setTargetAtTime(m, ac.currentTime, 0.05); sfxBus.gain.setTargetAtTime(fx, ac.currentTime, 0.05); }
+      }
+      return { play, unlock, sfx, toggleMute, peak, setVolumes, get info() { return { ctx: ac && ac.state, track: cur && cur.name, step: cur && cur.step, muted }; } };
     })();
     $("muteBtn").addEventListener("click", () => { Music.unlock(); Music.toggleMute(); });
     for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => Music.unlock(), { capture: true });
@@ -976,19 +1088,24 @@
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (solidAt(x, y)) return true;
       return false;
     }
-    function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("show"); toastT = 2.2; }
-    function collect(c) {
+    function toast(msg, secs = 2.2) { const el = $("toast"); el.textContent = msg; el.classList.add("show"); toastT = secs; }
+    function collect(c, shiny) {
       collected.add(c.id);
+      if (shiny) shinies.add(c.id);
       // items: the first Octocat comes with a starter kit, every catch adds a Hotfix, every fourth a Revert
       const gift = collected.size === 1 ? { hotfix: 2, revert: 1 } : { hotfix: 1, revert: collected.size % 4 === 0 ? 1 : 0 };
       bag.hotfix = Math.min(9, bag.hotfix + gift.hotfix); bag.revert = Math.min(9, bag.revert + gift.revert);
       save(); updateCount();
-      toast(collected.size === OCTOCATS.length ? "You caught them all! A Merge Conflict is blocking Fort Mason Center..." : collected.size === 1 ? "Collected " + c.name + "! You got 2 Hotfix and 1 Revert." : "Collected " + c.name + "!");
+      toast((shiny ? "✨ Shiny! " : "") + (collected.size === OCTOCATS.length ? "You caught them all! A Merge Conflict is blocking Fort Mason Center..." : collected.size === 1 ? "Collected " + c.name + "! You got 2 Hotfix and 1 Revert." : "Collected " + c.name + "!"), collected.size === 1 ? 3 : 2.2);
+      unlock("first");
+      if (collected.size >= 5) unlock("shark");
+      if (collected.size === OCTOCATS.length) unlock("vault");
+      if (shiny) unlock("star");
       if (!$("inv").hidden) renderInventory();
     }
     function update(dt) {
-      let dx = (keys.d || keys.ArrowRight ? 1 : 0) - (keys.a || keys.ArrowLeft ? 1 : 0) + pad.x;
-      let dy = (keys.s || keys.ArrowDown ? 1 : 0) - (keys.w || keys.ArrowUp ? 1 : 0) + pad.y;
+      let dx = (keys[KEYS.right] || keys.ArrowRight ? 1 : 0) - (keys[KEYS.left] || keys.ArrowLeft ? 1 : 0) + pad.x;
+      let dy = (keys[KEYS.down] || keys.ArrowDown ? 1 : 0) - (keys[KEYS.up] || keys.ArrowUp ? 1 : 0) + pad.y;
       dx = Math.max(-1, Math.min(1, dx)); dy = Math.max(-1, Math.min(1, dy));
       player.moving = !!(dx || dy);
       if (player.moving) {
@@ -1002,12 +1119,20 @@
       else for (const c of OCTOCATS) {
         if (collected.has(c.id)) continue;
         if (Math.hypot(player.x - (c.tx * TS + TS / 2), (player.y - 8) - (c.ty * TS + TS / 2)) < 22) {
-          if (collected.size === 0) { collect(c); Music.sfx("collect"); } // the first Octocat is free
+          if (collected.size === 0) { collect(c, Math.random() < SHINY_RATE); Music.sfx("collect"); } // the first Octocat is free
           else startPick(c);
           break;
         }
       }
       if (scene === "world" && encounterCd <= 0 && bossReady() && Math.hypot(player.x - (BOSS.tx * TS + TS / 2), (player.y - 8) - (BOSS.ty * TS + TS / 2)) < 28) startPick(BOSS);
+      if (scene === "world" && encounterCd <= 0) for (const tr of TRAINERS) {
+        if (Math.hypot(player.x - (tr.tx * TS + TS / 2), player.y - (tr.ty * TS + TS / 2 + 10)) >= 20) continue;
+        encounterCd = 2.5;
+        if (trainersBeaten.has(tr.id)) toast(tr.name + ": " + tr.tip, 3.2);
+        else if (!collected.size) toast(tr.name + ": Come back when you have an Octocat!", 3);
+        else startPick(tr);
+        break;
+      }
       if ((saveT -= dt) <= 0) { saveT = 3; save(); }
       if (toastT > 0 && (toastT -= dt) <= 0) $("toast").classList.remove("show");
     }
@@ -1061,6 +1186,17 @@
           ctx.fillStyle = "#fff"; ctx.strokeStyle = "#0b0f19"; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.roundRect(cx - 8, by - 10, 16, 18, 5); ctx.fill(); ctx.stroke();
           ctx.fillStyle = "#da3633"; ctx.font = "900 14px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("!", cx, by);
+        }
+      }
+      for (const tr of TRAINERS) {                             // trainers wait on the paths
+        const tx = tr.tx * TS + TS / 2, ty = tr.ty * TS + TS / 2 + 10, done = trainersBeaten.has(tr.id);
+        drawPlayer(ctx, tx, ty, time + tr.tx, TRAINER_POSE, tr.pal);
+        if (!done || Math.hypot(player.x - tx, player.y - ty) < TS * 3.2) {
+          const tag = done ? tr.name + " ✔" : tr.name;
+          ctx.font = "800 10px ui-monospace, monospace"; const w = ctx.measureText(tag).width + 12;
+          ctx.fillStyle = "rgba(13,17,23,.85)"; ctx.strokeStyle = done ? "#3fb950" : "#58a6ff"; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.roundRect(tx - w / 2, ty - 60, w, 15, 5); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#e6edf3"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(tag, tx, ty - 52.5);
         }
       }
       if (bossReady()) {                                       // the Merge Conflict boss
@@ -1143,6 +1279,7 @@
       for (const c of OCTOCATS) if (!collected.has(c.id)) {
         ctx.fillStyle = Math.sin(time * 5 + c.tx) > 0 ? "#ffd33d" : "#f85149"; ctx.fillRect(mx + c.tx * 2 - 1, my + c.ty * 2 - 1, 3, 3);
       }
+      for (const tr of TRAINERS) if (!trainersBeaten.has(tr.id)) { ctx.fillStyle = "#58a6ff"; ctx.fillRect(mx + tr.tx * 2 - 1, my + tr.ty * 2 - 1, 3, 3); }
       if (bossReady()) { ctx.fillStyle = Math.sin(time * 8) > 0 ? "#f85149" : "#7ee787"; ctx.fillRect(mx + BOSS.tx * 2 - 2, my + BOSS.ty * 2 - 2, 5, 5); }
       ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(mx + player.x / TS * 2, my + player.y / TS * 2, 2.5, 0, 7); ctx.fill();
       ctx.restore();
@@ -1152,8 +1289,11 @@
       pollGamepad(); badgeTick(dt);
       if (scene === "title") drawTitleArt();
       if (scene === "credits") drawCreditsArt();
-      if (scene === "battle") { updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
-      else { if (scene === "world" && $("inv").hidden) update(dt); render(); }
+      const paused = !$("settings").hidden;
+      if (!paused && scene !== "title" && scene !== "credits") playTime += dt;
+      if (scene === "battle") { if (!paused) updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
+      else { if (scene === "world" && $("inv").hidden && !paused) update(dt); render(); }
+      if (toastT <= 0 && achQueue.length && (scene === "world" || scene === "credits")) { const a = achQueue.shift(); toast("🏆 Achievement unlocked: " + a.icon + " " + a.name, 2.8); }
       if (toastT > 0 && scene !== "world" && (toastT -= dt) <= 0) $("toast").classList.remove("show");
       requestAnimationFrame(loop);
     }
@@ -1187,13 +1327,14 @@
       OCTOCATS.forEach((cat, i) => {
         const x = 20 + i * 34.5, y = 50 + Math.sin(time * 4 + i * 0.7) * 6;
         c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.ellipse(x, 84, 11, 3, 0, 0, 7); c.fill();
-        drawOctocat(c, x, y, 40, cat.id, cat.color, time + i, images[cat.id]);
+        drawCat(c, x, y, 40, cat, time + i, shinies.has(cat.id));
       });
     }
     function showCredits() {
       scene = "credits"; keys = {}; player.moving = false;
       const el = $("credits"), roll = el.querySelector(".roll");
       roll.style.animation = "none"; void roll.offsetWidth; roll.style.animation = "";
+      $("creditsTime").textContent = "Your time " + fmtTime(playTime) + (meta.best != null ? " · Best " + fmtTime(meta.best) : "");
       el.hidden = false; el.scrollTop = 0; $("creditsBtn").focus();
     }
     function closeCredits() {
@@ -1212,7 +1353,7 @@
     }
     const stage = (n) => n >= 0 ? (2 + n) / 2 : 2 / (2 - n);
     const sideKey = (side) => side === battle.me ? "me" : "foe";
-    const label = (side) => (side === battle.foe && !battle.boss ? "Wild " : "") + side.cat.name;
+    const label = (side) => (side === battle.foe && !battle.boss ? (battle.trainer ? battle.trainer.short + "'s " : "Wild ") : "") + side.cat.name;
     function startPick(foe) {
       scene = "pick"; pendingFoe = foe; keys = {}; player.moving = false;
       $("pickTitle").textContent = "Choose an Octocat to battle " + foe.name;
@@ -1237,10 +1378,16 @@
       scene = "battle"; $("pick").hidden = true; $("battleUI").hidden = false; $("toast").classList.remove("show"); toastT = 0;
       const team = {};
       for (const id of collected) team[id] = null;              // null = full HP
-      const boss = foe === BOSS;
-      battle = { me: makeSide(fighter, teamLevel()), foe: makeSide(foe, boss ? teamLevel() + 3 : foeLevel()), team, age: 0, phase: "intro", steps: [], step: null, stepT: 0, anim: null, after: null, parts: [], pops: [], picking: false, boss, undo: null };
+      const boss = foe === BOSS, trainer = foe.team ? foe : null, first = trainer ? OCTOCATS.find((o) => o.id === trainer.team[0]) : foe;
+      battle = { me: makeSide(fighter, teamLevel()), foe: makeSide(first, boss ? teamLevel() + 3 : foeLevel() + (trainer ? trainer.lv : 0)), team, age: 0, phase: "intro", steps: [], step: null, stepT: 0, anim: null, after: null, parts: [], pops: [], picking: false,
+        boss, trainer, next: 1, undo: null, turns: 0, items: 0, used: new Set([fighter.id]) };
+      battle.foe.shiny = !boss && !trainer && Math.random() < SHINY_RATE;
+      battle.me.shiny = shinies.has(fighter.id);
       setChoosing(false); Music.play("battle");
-      runSteps([{ msg: boss ? "The Merge Conflict blocks the doors of Fort Mason Center!" : "A wild " + foe.name + " appeared!", dur: boss ? 1.9 : 1.4 }, { msg: "Go, " + fighter.name + "!", dur: 0.9 }], choose);
+      const intro = boss ? [{ msg: "The Merge Conflict blocks the doors of Fort Mason Center!", dur: 1.9 }]
+        : trainer ? [{ msg: trainer.name + ": " + trainer.hi, dur: 2.0 }, { msg: trainer.short + " sends out " + first.name + "!", dur: 1.1 }]
+        : [{ msg: (battle.foe.shiny ? "A shiny " : "A wild ") + foe.name + " appeared!", dur: battle.foe.shiny ? 1.8 : 1.4 }];
+      runSteps([...intro, { msg: "Go, " + fighter.name + "!", dur: 0.9 }], choose);
     }
 
     /* step queue: each step shows a message for `dur` seconds and may start an animation */
@@ -1274,8 +1421,8 @@
         box.appendChild(btn);
       });
       $("switchBtn").disabled = aliveTeam().filter((id) => id !== battle.me.cat.id).length === 0;
-      $("hotfixBtn").textContent = "Hotfix ×" + bag.hotfix + " (H)"; $("hotfixBtn").disabled = !canHotfix();
-      $("revertBtn").textContent = "Revert ×" + bag.revert + " (R)"; $("revertBtn").disabled = !canRevert();
+      $("hotfixBtn").textContent = "Hotfix ×" + bag.hotfix + " (" + keyLabel(KEYS.hotfix) + ")"; $("hotfixBtn").disabled = !canHotfix();
+      $("revertBtn").textContent = "Revert ×" + bag.revert + " (" + keyLabel(KEYS.revert) + ")"; $("revertBtn").disabled = !canRevert();
       box.firstChild.focus();
     }
     function choose() { battle.phase = "choose"; setMsg("What will " + battle.me.cat.name + " do?"); setChoosing(true); }
@@ -1320,7 +1467,10 @@
             if (r.miss) follow.push({ msg: "...but it missed!", dur: 0.8 });
             else {
               if (r.crit) follow.push({ msg: "A critical hit!", dur: 0.8 });
-              if (r.eff > 1) follow.push({ msg: "It's super effective!", dur: 0.9 });
+              if (r.eff > 1) {
+                follow.push({ msg: "It's super effective!", dur: 0.9 });
+                if (who === "me") { meta.supers++; saveMeta(); if (meta.supers >= 10) unlock("brain"); }
+              }
               if (r.eff < 1) follow.push({ msg: "It's not very effective...", dur: 0.9 });
               if (r.lowered) follow.push({ msg: d.cat.name + "'s Defense fell!", dur: 0.8 });
               if (d.hp <= 0) follow.push({ msg: d === battle.foe && battle.boss ? "The Merge Conflict is resolved!" : label(d) + " fainted!", dur: 1.3, anim: { kind: "faint", who: sideKey(d) } });
@@ -1333,7 +1483,7 @@
     function useMove(i) {
       if (scene !== "battle" || battle.phase !== "choose" || battle.picking) return;
       const mine = battle.me.moves[i]; if (!mine) return;
-      snapshot(); battle.phase = "turn"; setChoosing(false);
+      snapshot(); battle.phase = "turn"; battle.turns++; setChoosing(false);
       const theirs = aiMove(battle.foe, battle.me);
       const meFirst = (MOVES[mine].prio || 0) !== (MOVES[theirs].prio || 0)
         ? (MOVES[mine].prio || 0) > (MOVES[theirs].prio || 0)
@@ -1342,6 +1492,11 @@
       runSteps(meFirst ? [meStep, foeStep] : [foeStep, meStep], endTurn);
     }
     function endTurn() {
+      if (battle.foe.hp <= 0 && battle.trainer && battle.next < battle.trainer.team.length) {   // the trainer sends out the next Octocat
+        const id = battle.trainer.team[battle.next++], cat = OCTOCATS.find((o) => o.id === id);
+        battle.foe = makeSide(cat, foeLevel() + battle.trainer.lv); battle.undo = null;
+        return runSteps([{ msg: battle.trainer.short + " sends out " + cat.name + "!", dur: 1.1, anim: { kind: "enter", who: "foe" } }], choose);
+      }
       if (battle.foe.hp <= 0) return win();
       if (battle.me.hp <= 0) return meFainted();
       if (battle.boss) {                                      // the boss's changes flip to the next type every turn
@@ -1362,7 +1517,8 @@
     function useItem(kind) {
       if (scene !== "battle" || battle.phase !== "choose" || battle.picking) return;
       if (kind === "hotfix" ? !canHotfix() : !canRevert()) return;
-      bag[kind]--; save(); setChoosing(false);
+      bag[kind]--; battle.items++; save(); setChoosing(false);
+      if (kind === "revert") unlock("travel");
       const me = battle.me;
       if (kind === "revert") {
         battle.phase = "turn";
@@ -1373,7 +1529,7 @@
         ], choose);
         return;
       }
-      snapshot(); battle.phase = "turn";
+      snapshot(); battle.phase = "turn"; battle.turns++;
       const heal = { msg: "You shipped a Hotfix to " + me.cat.name + "!", dur: 1.0, anim: { kind: "heal", who: "me" },
         start() { const amt = Math.min(me.max - me.hp, Math.round(me.max * 0.5)); me.hp += amt; Music.sfx("collect"); battle.steps.unshift({ msg: me.cat.name + " restored " + amt + " HP!", dur: 0.9 }); } };
       runSteps([heal, actionStep(() => battle.foe, aiMove(battle.foe, battle.me))], endTurn);
@@ -1384,20 +1540,43 @@
     function win() {
       const foe = battle.foe.cat;
       if (battle.boss) {
+        const used = battle.used.size, items = battle.items;
         battle.phase = "end"; Music.play(null); Music.sfx("win");
         runSteps([{ msg: "All checks have passed. GitHub Universe is ready to ship!", dur: 2.4, anim: { kind: "caught" } }], () => {
-          endBattle(); bossBeaten = true; save(); showCredits();
+          endBattle(); bossBeaten = true; save();
+          meta.best = meta.best == null ? playTime : Math.min(meta.best, playTime); saveMeta();
+          if (used <= 2) unlock("pair");
+          if (!items) unlock("yolo");
+          if (playTime < 15 * 60) unlock("speed");
+          showCredits();
         });
         return;
       }
+      if (battle.trainer) {
+        const tr = battle.trainer;
+        battle.phase = "end"; Music.play(null); Music.sfx("win");
+        runSteps([{ msg: tr.name + ": " + tr.bye, dur: 2.2 }], () => { endBattle(); encounterCd = 2.5; beatTrainer(tr); });
+        return;
+      }
+      const shiny = !!battle.foe.shiny, quick = battle.turns === 1;
       battle.phase = "end"; Music.play(null); Music.sfx("win");
       runSteps([
         { msg: "Octodex activated...", dur: 2.2, anim: { kind: "catch" } },
-        { msg: "Gotcha! " + foe.name + " was added to your Octodex!", dur: 1.8, anim: { kind: "caught" } }
+        { msg: "Gotcha! " + (shiny ? "Shiny " : "") + foe.name + " was added to your Octodex!", dur: 1.8, anim: { kind: "caught" } }
       ], () => {
-        endBattle(); encounterCd = 0; collect(foe);
+        endBattle(); encounterCd = 0; collect(foe, shiny);
+        if (quick) unlock("quick");
         if (collected.size < OCTOCATS.length) toast(foe.name + " caught! Your Octocats are now Lv " + teamLevel() + ".");
       });
+    }
+    function beatTrainer(tr) {
+      trainersBeaten.add(tr.id);
+      bag.hotfix = Math.min(9, bag.hotfix + tr.reward.hotfix); bag.revert = Math.min(9, bag.revert + tr.reward.revert);
+      save();
+      const left = OCTOCATS.filter((c) => !collected.has(c.id)), pick = left[Math.floor(Math.random() * left.length)];
+      const got = "+" + tr.reward.hotfix + " Hotfix" + (tr.reward.revert ? ", +" + tr.reward.revert + " Revert" : "");
+      toast(got + ". " + (pick ? "Hint: an Octocat is " + pick.where.charAt(0).toLowerCase() + pick.where.slice(1) : "Hint: the Merge Conflict changes type every turn."), 4.5);
+      if (trainersBeaten.size === TRAINERS.length) unlock("mentor");
     }
     function meFainted() {
       battle.team[battle.me.cat.id] = 0;
@@ -1431,6 +1610,7 @@
       battle.picking = false; $("pick").hidden = true;
       if (battle.me.hp > 0) battle.team[battle.me.cat.id] = battle.me.hp;
       battle.me = makeSide(c, teamLevel(), battle.team[c.id]);
+      battle.me.shiny = shinies.has(c.id); battle.used.add(c.id);
       battle.phase = "turn"; battle.undo = null;
       const steps = [{ msg: "Go, " + c.name + "!", dur: 1.0, anim: { kind: "enter", who: "me" } }];
       if (!forced) steps.push(actionStep(() => battle.foe, aiMove(battle.foe, battle.me)));
@@ -1441,7 +1621,7 @@
       else if (scene === "battle" && battle.picking) closeSwitch();
       else if (scene === "battle" && battle.phase === "choose") {
         battle.phase = "end"; setChoosing(false);
-        const foe = battle.foe.cat; runSteps([{ msg: "Got away safely!", dur: 0.9 }], () => leaveEncounter(foe));
+        const foe = battle.trainer || battle.foe.cat; runSteps([{ msg: "Got away safely!", dur: 0.9 }], () => leaveEncounter(foe));
       }
     }
     let typeTimer = null;
@@ -1511,7 +1691,7 @@
       const c = ctx, b = battle, FX = 470, FY = 132, PX = 170, PY = 238, age = b.age, A = b.anim;
       const lp = A ? Math.min(1, A.t / 0.8) : 0;
       c.save();
-      if (A && A.kind === "lunge" && A.hit && lp > 0.5 && lp < 0.9) { const k = (A.crit ? 18 : 11) * (1 - lp); c.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
+      if (!settings.calm && A && A.kind === "lunge" && A.hit && lp > 0.5 && lp < 0.9) { const k = (A.crit ? 18 : 11) * (1 - lp); c.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
       // sky, sun, clouds
       const sky = c.createLinearGradient(0, 0, 0, 150); sky.addColorStop(0, "#2f6fd0"); sky.addColorStop(0.6, "#8cc8ff"); sky.addColorStop(1, "#ffd9a8");
       c.fillStyle = sky; c.fillRect(-10, -10, VW + 20, 160);
@@ -1570,9 +1750,9 @@
         }
       }
       if (A && A.kind === "faint") { const q = pos[A.who]; q.a = Math.max(0, 1 - A.t / 0.9); q.y += A.t * 45; }
-      if (A && A.kind === "enter") pos.me.x -= (1 - ease(A.t / 0.5)) * 340;
-      c.globalAlpha = pos.foe.a; drawOctocat(c, pos.foe.x, pos.foe.y, 100, b.foe.cat.id, b.foe.cat.color, time, images[b.foe.cat.id]);
-      c.globalAlpha = pos.me.a; drawOctocat(c, pos.me.x, pos.me.y, 130, b.me.cat.id, b.me.cat.color, time, images[b.me.cat.id]); c.globalAlpha = 1;
+      if (A && A.kind === "enter") pos[A.who].x += (A.who === "foe" ? 1 : -1) * (1 - ease(A.t / 0.5)) * 340;
+      c.globalAlpha = pos.foe.a; drawCat(c, pos.foe.x, pos.foe.y, 100, b.foe.cat, time, b.foe.shiny);
+      c.globalAlpha = pos.me.a; drawCat(c, pos.me.x, pos.me.y, 130, b.me.cat, time, b.me.shiny); c.globalAlpha = 1;
       if (A && A.kind === "faint" && A.t < 0.8) {          // poof
         const q = A.who === "foe" ? { x: FX, y: FY } : { x: PX, y: PY };
         for (let i = 0; i < 6; i++) { const an = i / 6 * Math.PI * 2, r = 20 + A.t * 70; c.fillStyle = `rgba(255,255,255,${0.7 * (1 - A.t / 0.8)})`; c.beginPath(); c.arc(q.x + Math.cos(an) * r, q.y + 20 + Math.sin(an) * r * 0.5, 16 * (1 - A.t / 0.8) + 6, 0, 7); c.fill(); }
@@ -1639,7 +1819,7 @@
       if (age < 0.6) {
         const k = age / 0.6;
         c.fillStyle = "#000"; const bh = (1 - ease(k)) * VH / 2; c.fillRect(0, 0, VW, bh); c.fillRect(0, VH - bh, VW, bh);
-        if (age < 0.18) { c.fillStyle = `rgba(255,255,255,${1 - age / 0.18})`; c.fillRect(0, 0, VW, VH); }
+        if (age < 0.18 && !settings.calm) { c.fillStyle = `rgba(255,255,255,${1 - age / 0.18})`; c.fillRect(0, 0, VW, VH); }
       }
     }
 
@@ -1652,10 +1832,11 @@
       const no = document.createElement("span"); no.className = "no"; no.textContent = "#" + String(OCTOCATS.indexOf(c) + 1).padStart(3, "0"); card.appendChild(no);
       const cc = document.createElement("canvas"); cc.width = cc.height = 64;
       const g = cc.getContext("2d");
-      drawOctocat(g, 32, 30, 56, c.id, c.color, 0, images[c.id]);
+      drawCat(g, 32, 30, 56, c, 0, found && shinies.has(c.id));
       if (!found) { g.globalCompositeOperation = "source-in"; g.fillStyle = "#2a3247"; g.fillRect(0, 0, 64, 64); }
       card.appendChild(cc);
       const name = document.createElement("span"); name.textContent = found ? c.name : "???"; card.appendChild(name);
+      if (found && shinies.has(c.id)) { const st = document.createElement("b"); st.className = "star"; st.textContent = "★"; st.title = "Shiny"; card.appendChild(st); card.classList.add("shiny"); }
       if (found && (opts.showMove || opts.hp)) {
         const k = kitOf(c.id), ty = document.createElement("span"); ty.className = "ty"; ty.textContent = TYPES[k.type].label; ty.style.setProperty("--t", TYPES[k.type].color); card.appendChild(ty);
         const mv = document.createElement("span"); mv.className = opts.hp ? "hp" : "mv"; mv.textContent = opts.hp || k.moves[0]; card.appendChild(mv);
@@ -1667,6 +1848,15 @@
       const g = $("grid"); g.textContent = "";
       $("bag").textContent = "Items: " + bag.hotfix + " Hotfix (heals half HP) · " + bag.revert + " Revert (undoes a turn)" + (bossBeaten ? " · Merge Conflict resolved ✔" : bossReady() ? " · The Merge Conflict waits at Fort Mason Center" : "");
       $("creditsAgain").hidden = !bossBeaten;
+      $("bag").textContent += " · Play time " + fmtTime(playTime) + (shinies.size ? " · " + shinies.size + " shiny" : "");
+      $("achCount").textContent = "(" + meta.ach.length + "/" + ACHIEVEMENTS.length + ")";
+      const ach = $("ach"); ach.textContent = "";
+      for (const a of ACHIEVEMENTS) {
+        const el = document.createElement("div"); el.className = meta.ach.includes(a.id) ? "got" : "";
+        el.innerHTML = "<i></i><span><b></b><small></small></span>";
+        el.querySelector("i").textContent = a.icon; el.querySelector("b").textContent = a.name; el.querySelector("small").textContent = a.how;
+        ach.appendChild(el);
+      }
       $("invCount").textContent = "(" + collected.size + "/" + OCTOCATS.length + ")";
       for (const c of OCTOCATS) {
         const found = collected.has(c.id);
@@ -1692,31 +1882,94 @@
     $("runBtn").addEventListener("click", runAway);
     $("pickRun").addEventListener("click", runAway);
     $("resetBtn").addEventListener("click", () => {
-      collected = new Set(); bag = { hotfix: 0, revert: 0 }; bossBeaten = false; save(); selected = null; updateCount(); renderInventory();
+      collected = new Set(); bag = { hotfix: 0, revert: 0 }; bossBeaten = false; shinies = new Set(); trainersBeaten = new Set(); playTime = 0; save(); selected = null; updateCount(); renderInventory();
       $("detail").textContent = "Progress reset. Go find them again!";
     });
 
     /* ---------- Input ---------- */
     const norm = (e) => (e.key.length === 1 ? e.key.toLowerCase() : e.key);
-    const MOVE_KEYS = new Set(["w", "a", "s", "d", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+
+    /* ---------- Settings: volumes, colour-blind palette, calmer effects, key bindings ---------- */
+    const KEY_ACTIONS = [["up", "Move up", "w"], ["down", "Move down", "s"], ["left", "Move left", "a"], ["right", "Move right", "d"], ["dex", "Octodex", "i"],
+      ["switch", "Switch Octocat", "s"], ["hotfix", "Hotfix", "h"], ["revert", "Revert", "r"], ["run", "Run", "Escape"], ["music", "Music on/off", "m"]];
+    const KEYS = Object.fromEntries(KEY_ACTIONS.map(([id, , k]) => [id, k]));
+    const SETTINGS_KEY = "fort-mason-octodex-settings";
+    const BASE_COLORS = Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.color]));
+    const SAFE_COLORS = { GIT: "#e69f00", CODE: "#009e73", OPS: "#cc79a7", SEC: "#56b4e9" };   // Okabe-Ito palette
+    const settings = { music: 70, sfx: 80, colors: false, calm: matchMedia("(prefers-reduced-motion: reduce)").matches };
+    let capturing = null;
+    const keyLabel = (k) => k === " " ? "Space" : k === "Escape" ? "Esc" : k.startsWith("Arrow") ? k.slice(5) : k.length === 1 ? k.toUpperCase() : k;
+    const isMoveKey = (k) => k.startsWith("Arrow") || [KEYS.up, KEYS.down, KEYS.left, KEYS.right].includes(k);
+    function loadSettings() {
+      try {
+        const d = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+        if (!d) return;
+        for (const k of ["music", "sfx"]) if (Number.isFinite(d[k])) settings[k] = Math.max(0, Math.min(100, d[k]));
+        for (const k of ["colors", "calm"]) if (typeof d[k] === "boolean") settings[k] = d[k];
+        if (d.keys) for (const [id] of KEY_ACTIONS) if (typeof d.keys[id] === "string" && d.keys[id]) KEYS[id] = d.keys[id];
+      } catch (e) { /* storage blocked */ }
+    }
+    function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...settings, keys: KEYS })); } catch (e) { /* storage blocked */ } }
+    function applySettings() {
+      Music.setVolumes(settings.music / 100, settings.sfx / 100);
+      for (const k in TYPES) TYPES[k].color = settings.colors ? SAFE_COLORS[k] : BASE_COLORS[k];
+      $("volMusic").value = settings.music; $("volSfx").value = settings.sfx; $("cbColors").checked = settings.colors; $("cbCalm").checked = settings.calm;
+      refreshKeyLabels(); renderInventory();
+    }
+    function refreshKeyLabels() {
+      const kb = (id) => "<kbd>" + keyLabel(KEYS[id]) + "</kbd>";
+      $("invBtn").textContent = "Inventory (" + keyLabel(KEYS.dex) + ")"; $("closeInv").textContent = "Close (" + keyLabel(KEYS.dex) + ")";
+      $("muteBtn").textContent = "Music: " + (Music.info.muted ? "Off" : "On") + " (" + keyLabel(KEYS.music) + ")";
+      $("switchBtn").textContent = "Switch (" + keyLabel(KEYS.switch) + ")"; $("runBtn").textContent = "Run (" + keyLabel(KEYS.run) + ")";
+      $("help").innerHTML = "Move with " + kb("up") + kb("left") + kb("down") + kb("right") + " or arrow keys. Walk into an Octocat to collect it. " + kb("dex") + " opens the Octodex, " + kb("music") +
+        " toggles music, <kbd>1</kbd>–<kbd>4</kbd> pick a move in battle, " + kb("hotfix") + " uses a Hotfix, " + kb("revert") + " a Revert, " + kb("switch") +
+        " switches Octocat. Code beats Ops, Ops beats Security, Security beats Code. Your progress is saved in this browser.";
+      const box = $("keys"); box.textContent = "";
+      for (const [id, name] of KEY_ACTIONS) {
+        const row = document.createElement("div"), b = document.createElement("button");
+        row.textContent = name; b.type = "button"; b.className = "secondary"; b.textContent = capturing === id ? "Press a key…" : keyLabel(KEYS[id]);
+        b.addEventListener("click", () => { capturing = id; refreshKeyLabels(); });
+        row.appendChild(b); box.appendChild(row);
+      }
+    }
+    function setSettings(open) {
+      $("settings").hidden = !open; capturing = null; keys = {};
+      if (open) { refreshKeyLabels(); $("closeSet").focus(); } else cv.focus();
+    }
+    $("setBtn").addEventListener("click", () => setSettings($("settings").hidden));
+    $("closeSet").addEventListener("click", () => setSettings(false));
+    for (const id of ["volMusic", "volSfx"]) $(id).addEventListener("input", () => {
+      settings.music = +$("volMusic").value; settings.sfx = +$("volSfx").value;
+      Music.unlock(); Music.setVolumes(settings.music / 100, settings.sfx / 100); saveSettings();
+    });
+    $("volSfx").addEventListener("change", () => Music.sfx("collect"));
+    $("cbColors").addEventListener("change", () => { settings.colors = $("cbColors").checked; saveSettings(); applySettings(); });
+    $("cbCalm").addEventListener("change", () => { settings.calm = $("cbCalm").checked; saveSettings(); });
+
     addEventListener("keydown", (e) => {
       const k = norm(e);
+      if (capturing) {                                          // the next key becomes the new binding
+        e.preventDefault();
+        if (k !== "Escape" && !k.startsWith("Arrow") && !["Enter", "Tab", " ", "Shift", "Control", "Alt", "Meta"].includes(k)) { KEYS[capturing] = k; saveSettings(); }
+        capturing = null; refreshKeyLabels(); return;
+      }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (k === "m") { Music.toggleMute(); return; }
-      if (scene === "title") { if (k === "Enter" || k === " " || MOVE_KEYS.has(k)) { e.preventDefault(); startGame(); } return; }
+      if (!$("settings").hidden) { if (k === "Escape") setSettings(false); return; }
+      if (k === KEYS.music) { Music.toggleMute(); return; }
+      if (scene === "title") { if (k === "Enter" || k === " " || isMoveKey(k)) { e.preventDefault(); startGame(); } return; }
       if (scene === "credits") { if (k === "Escape") closeCredits(); return; }
       if (scene === "battle" || scene === "pick") {
-        if (k === "Escape") runAway();
+        if (k === "Escape" || k === KEYS.run) runAway();
         else if (scene === "battle" && !battle.picking && /^[1-4]$/.test(k)) useMove(+k - 1);
         else if (scene === "battle" && k === "f") useMove(0);
-        else if (scene === "battle" && k === "s") openSwitch(false);
-        else if (scene === "battle" && k === "h") useItem("hotfix");
-        else if (scene === "battle" && k === "r") useItem("revert");
+        else if (scene === "battle" && k === KEYS.switch) openSwitch(false);
+        else if (scene === "battle" && k === KEYS.hotfix) useItem("hotfix");
+        else if (scene === "battle" && k === KEYS.revert) useItem("revert");
         return;
       }
-      if (k === "i") { setInventory($("inv").hidden); return; }
+      if (k === KEYS.dex) { setInventory($("inv").hidden); return; }
       if (k === "Escape" && !$("inv").hidden) { setInventory(false); return; }
-      if (MOVE_KEYS.has(k) && $("inv").hidden) { keys[k] = true; e.preventDefault(); }
+      if (isMoveKey(k) && $("inv").hidden) { keys[k] = true; e.preventDefault(); }
     });
     addEventListener("keyup", (e) => { keys[norm(e)] = false; });
     addEventListener("blur", () => { keys = {}; });
@@ -1749,14 +2002,16 @@
       const held = (k) => badgeHeld.has(k) || touchHeld.has(k);
       x += (b(15) || held("right") ? 1 : 0) - (b(14) || held("left") ? 1 : 0);
       y += (b(13) || held("down") ? 1 : 0) - (b(12) || held("up") ? 1 : 0);
-      const inGame = scene === "world" && $("inv").hidden;
+      const inGame = scene === "world" && $("inv").hidden && $("settings").hidden;
       pad.x = inGame ? x : 0; pad.y = inGame ? y : 0;
       const A = b(0) || held("select"), B = b(1) || held("back");
       const Y = b(3) || b(9);
       const was = pad.prev;
       const L = x < -0.5, R = x > 0.5, U = y < -0.5, D = y > 0.5;
       pad.prev = { A, B, Y, L, R, U, D };
-      if (scene === "title") {
+      if (!$("settings").hidden) {
+        if (B && !was.B) setSettings(false);
+      } else if (scene === "title") {
         if ((A && !was.A) || (Y && !was.Y)) startGame();
       } else if (scene === "credits") {
         if ((A && !was.A) || (B && !was.B)) closeCredits();
@@ -1929,7 +2184,23 @@
     addEventListener("pagehide", save);
     addEventListener("visibilitychange", () => { if (document.hidden) save(); });
 
+    /* ---------- Installable app (GitHub Pages build: manifest, icons and service worker sit next to the page) ---------- */
+    if (location.hostname.endsWith("github.io") || location.hostname === "127.0.0.1") {
+      for (const [rel, href] of [["manifest", "manifest.webmanifest"], ["apple-touch-icon", "icon-192.png"]]) { const l = document.createElement("link"); l.rel = rel; l.href = href; document.head.appendChild(l); }
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { /* offline play unavailable */ });
+    }
+    let installEvt = null;
+    addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; $("installBtn").hidden = false; });
+    addEventListener("appinstalled", () => { installEvt = null; $("installBtn").hidden = true; toast("Installed! Octodex is on your home screen."); });
+    $("installBtn").addEventListener("click", async () => {
+      if (!installEvt) return;
+      installEvt.prompt(); await installEvt.userChoice.catch(() => null);
+      installEvt = null; $("installBtn").hidden = true;
+    });
+
+    loadMeta(); loadSettings();
     loadSave();
+    applySettings();
     if (collected.size) $("startBtn").textContent = "▶ Continue · " + collected.size + "/" + OCTOCATS.length;
     updateCount(); renderInventory();
     requestAnimationFrame((t) => { last = t; loop(t); });
