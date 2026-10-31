@@ -216,6 +216,16 @@
     .ab button { width: 4.3rem; height: 4.3rem; padding: 0; font-size: 1.3rem; border-radius: 50%; touch-action: none; }
     .ab button:first-child { margin-top: 2.6rem; }
     .ab button.on { transform: translateY(2px); filter: brightness(1.25); }
+    #talk {
+      position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 2; padding: 0.6rem 0.9rem; cursor: pointer;
+      background: linear-gradient(180deg, rgba(22,29,46,.97), rgba(11,16,32,.97)); border: 2px solid #c9d1d9; border-radius: 0.8rem;
+      box-shadow: 0 0 0 3px #0b0f19, 0 0 0 5px #3d4a6b, 0 12px 30px rgba(0,0,0,.6);
+    }
+    #talk[hidden] { display: none; }
+    #talkWho { margin: 0 0 0.25rem; color: var(--green-hi); font: 800 0.72rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+    #talkText { margin: 0; min-height: 2.7rem; font: 700 0.9rem/1.45 var(--mono); }
+    #talk.done #talkText::after { content: "▼"; display: inline-block; margin-left: 0.4rem; color: var(--gold); font-size: 0.65rem; animation: nudge .8s ease-in-out infinite; }
+    @media (max-width: 520px) { #talk { left: 8px; right: 8px; bottom: 8px; padding: 0.45rem 0.6rem; } #talkText { min-height: 2.2rem; font-size: 0.74rem; } }
     kbd { display: inline-block; min-width: 1.3em; padding: 0 0.3rem; color: var(--ink); text-align: center; background: linear-gradient(180deg, #2d3548, #1b2133); border: 1px solid #3d4a6b; border-bottom-width: 2px; border-radius: 0.3rem; font: 700 0.7rem/1.5 var(--mono); }
     @media (max-width: 520px) {
       #battleUI { left: 8px; right: 8px; bottom: 8px; gap: 0.3rem; padding: 0.4rem 0.55rem; }
@@ -274,6 +284,7 @@
           <div class="row"><button id="hotfixBtn" type="button" class="secondary" title="Restores half of your Octocat's HP. The foe still attacks.">Hotfix</button><button id="revertBtn" type="button" class="secondary" title="Undoes the last turn: both Octocats go back to how they were.">Revert</button><button id="switchBtn" type="button" class="secondary">Switch (S)</button><button id="runBtn" type="button" class="secondary">Run (Esc)</button></div>
         </div>
       </div>
+      <div id="talk" hidden><p id="talkWho"></p><p id="talkText" aria-hidden="true"></p><p id="talkSr" class="sr" role="status" aria-live="polite"></p></div>
       <section class="overlay" id="inv" hidden aria-label="Inventory">
         <header><h2>Octodex <span id="invCount"></span></h2><button id="closeInv" type="button">Close (I)</button></header>
         <div class="grid" id="grid"></div>
@@ -597,7 +608,7 @@
     /* ---------- State ---------- */
     let collected = new Set(), keys = {}, last = 0, toastT = 0, selected = null, time = 0;
     let scene = "title", battle = null, encounterCd = 0, pendingFoe = null;
-    let bag = { hotfix: 0, revert: 0 }, bossBeaten = false, saveT = 0, shinies = new Set(), trainersBeaten = new Set(), playTime = 0;
+    let bag = { hotfix: 0, revert: 0 }, bossBeaten = false, saveT = 0, shinies = new Set(), trainersBeaten = new Set(), playTime = 0, talked = new Set(), gifts = new Set();
     const player = { x: SPAWN.tx * TS + TS / 2, y: SPAWN.ty * TS + TS / 2, dir: "down", moving: false, w: 20, h: 12, speed: 150 };
     /* ---------- Battle data: GitHub types, moves and Octocat kits ---------- */
     const TYPES = {
@@ -651,7 +662,7 @@
     /* Progress (Octodex, items, boss, position) lives in this browser's localStorage */
     const SAVE_KEY = "fort-mason-octodex";
     function save() {
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, dex: [...collected], bag, boss: bossBeaten, at: [Math.round(player.x), Math.round(player.y)], shiny: [...shinies], trainers: [...trainersBeaten], time: Math.round(playTime) })); }
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, dex: [...collected], bag, boss: bossBeaten, at: [Math.round(player.x), Math.round(player.y)], shiny: [...shinies], trainers: [...trainersBeaten], time: Math.round(playTime), talked: [...talked], gifts: [...gifts] })); }
       catch (e) { /* storage blocked: the game still works, it just won't remember */ }
     }
     /* Achievements, GitHub-profile style. They live outside the save so "Reset progress" keeps them */
@@ -666,7 +677,8 @@
       { id: "star", icon: "⭐", name: "Starstruck", how: "Catch a shiny Octocat." },
       { id: "pair", icon: "👯", name: "Pair Extraordinaire", how: "Resolve the Merge Conflict with 2 Octocats or fewer." },
       { id: "yolo", icon: "🎲", name: "YOLO", how: "Resolve the Merge Conflict without items." },
-      { id: "speed", icon: "⏱️", name: "Speedrunner", how: "Resolve the Merge Conflict in under 15 minutes." }
+      { id: "speed", icon: "⏱️", name: "Speedrunner", how: "Resolve the Merge Conflict in under 15 minutes." },
+      { id: "network", icon: "🤝", name: "Networker", how: "Talk to everyone inside the buildings." }
     ];
     const META_KEY = "fort-mason-octodex-meta", achQueue = [];
     let meta = { ach: [], best: null, supers: 0 };
@@ -693,6 +705,7 @@
       shinies = new Set((d.shiny || []).filter((id) => collected.has(id)));
       trainersBeaten = new Set((d.trainers || []).filter((id) => TRAINERS.some((t) => t.id === id)));
       playTime = Number.isFinite(d.time) ? d.time : 0;
+      talked = new Set(d.talked || []); gifts = new Set(d.gifts || []);
       const [x, y] = d.at || [];
       if (Number.isFinite(x) && Number.isFinite(y) && !blocked(x, y)) { player.x = x; player.y = y; }
     }
@@ -1115,6 +1128,10 @@
         if (!blocked(nx, player.y)) player.x = nx;
         if (!blocked(player.x, ny)) player.y = ny;
       }
+      if (player.moving && player.dir === "up") for (let i = 0; i < BUILDINGS.length; i++) {   // walk up into a door to go inside
+        const b = BUILDINGS[i], doorX = (b.x + b.w / 2) * TS, wall = (b.y + b.h) * TS;
+        if (Math.abs(player.x - doorX) < 12 && player.y - player.h < wall + 3 && player.y > wall) { enterRoom(i); return; }
+      }
       if (encounterCd > 0) encounterCd -= dt;
       else for (const c of OCTOCATS) {
         if (collected.has(c.id)) continue;
@@ -1135,6 +1152,253 @@
       }
       if ((saveT -= dt) <= 0) { saveT = 3; save(); }
       if (toastT > 0 && (toastT -= dt) <= 0) $("toast").classList.remove("show");
+    }
+
+    /* ---------- Inside the buildings: one room per building, with people to talk to ---------- */
+    // Rooms are listed in BUILDINGS order. Sizes and positions are in tiles; row 0-1 is the back wall, the door is the bottom middle tile.
+    const NPC = (id, name, x, y, pal, say) => ({ id, name, x, y, pal, say, pose: { dir: "down", moving: false } });
+    const lc = (t) => t.charAt(0).toLowerCase() + t.slice(1);
+    function giveOnce(id, items) {
+      if (gifts.has(id)) return false;
+      gifts.add(id); bag.hotfix = Math.min(9, bag.hotfix + (items.hotfix || 0)); bag.revert = Math.min(9, bag.revert + (items.revert || 0));
+      save(); Music.sfx("collect"); return true;
+    }
+    const ROOMS = [
+      { name: "Pier 1 Boathouse", w: 11, h: 8, floor: ["#8a6a4a", "#80603f"], wall: "#4d5b69", sign: ["PIER 1", "#1f6feb"],
+        items: [{ kind: "boat", x: 1, y: 3, w: 4, h: 2 }, { kind: "shelf", x: 7, y: 2, w: 3, h: 1 }, { kind: "barrel", x: 9, y: 5, w: 1, h: 1 }, { kind: "barrel", x: 1, y: 6, w: 1, h: 1 }],
+        npcs: [NPC("sal", "Sailor Sal", 7, 4, { pack: "#6e3a1e", arm: "#0d419d", hood: "#1f6feb", stripe: "#f0f6fc", skin: "#e0ac69", hair: "#d0d7de", cap: "#f0f6fc", visor: "#1f6feb" }, () => [
+          "Ahoy! That island out in the bay is Alcatraz. Its lighthouse has been sweeping the water for over 150 years.",
+          "When the fog rolls in, folks around here call it Karl. Karl the Fog. He even has fans.",
+          "Octocats love the piers. Check the very tips!"])] },
+      { name: "Pier 2 Hackerspace", w: 11, h: 8, floor: ["#3a4252", "#343c4b"], wall: "#2b3245", sign: ["HACK THE BADGE", "#3fb950"],
+        items: [{ kind: "desk", x: 1, y: 2, w: 3, h: 1 }, { kind: "desk", x: 7, y: 2, w: 3, h: 1 }, { kind: "table", x: 1, y: 5, w: 2, h: 1 }, { kind: "plant", x: 9, y: 6, w: 1, h: 1 }],
+        npcs: [NPC("max", "Maker Max", 5, 4, { pack: "#f0883e", arm: "#9a6700", hood: "#d29922", stripe: "#f2cc60", skin: "#f5c9a6", hair: "#3b2416", cap: "#3fb950", visor: "#196c2e" }, () => [
+          "Welcome to the hackerspace! Is that a Badger badge on your lanyard?",
+          "Plug it in over USB, open the Controller app, then press Connect badge in Chrome or Edge.",
+          "With the second-screen app, the badge shows the mini-map and your battles. Very 2026."])] },
+      { name: "Pier 3 Server Room", w: 11, h: 8, floor: ["#2d333b", "#272d35"], wall: "#1c2128", sign: ["ALL SYSTEMS GREEN", "#196c2e"],
+        items: [{ kind: "rack", x: 1, y: 2, w: 1, h: 3 }, { kind: "rack", x: 2, y: 2, w: 1, h: 3 }, { kind: "rack", x: 8, y: 2, w: 1, h: 3 }, { kind: "rack", x: 9, y: 2, w: 1, h: 3 }],
+        npcs: [NPC("sky", "SRE Sky", 5, 4, { pack: "#30363d", arm: "#0e4429", hood: "#196c2e", stripe: "#3fb950", skin: "#8d5524", hair: "#0d1117", cap: "#30363d", visor: "#161b22" }, () => [
+          "Shh... the servers are napping.",
+          "Pro tip from an SRE: Ops moves beat Security, Security beats Code, and Code beats Ops.",
+          "And when something breaks? It's always DNS."])] },
+      { name: "GitHub Universe Keynote Hall", w: 15, h: 11, floor: ["#3b1f5c", "#341b52"], wall: "#161b2e", screen: "GitHub Universe",
+        items: [{ kind: "stage", x: 4, y: 2, w: 7, h: 2 }, { kind: "seats", x: 2, y: 6, w: 4, h: 1 }, { kind: "seats", x: 9, y: 6, w: 4, h: 1 },
+          { kind: "seats", x: 2, y: 8, w: 4, h: 1 }, { kind: "seats", x: 9, y: 8, w: 4, h: 1 }, { kind: "plant", x: 0, y: 2, w: 1, h: 1 }, { kind: "plant", x: 14, y: 2, w: 1, h: 1 }],
+        npcs: [
+          NPC("kai", "Keynote Speaker Kai", 7, 4, { pack: "#8957e5", arm: "#161b22", hood: "#24292f", stripe: "#a371f7", skin: "#f5c9a6", hair: "#b62324", cap: "#24292f", visor: "#0d1117" }, () => [
+            "Welcome to GitHub Universe at Fort Mason!",
+            "Today's big launch: an Octodex that runs in your browser, on your phone and on your badge.",
+            collected.size === OCTOCATS.length ? "You caught all twelve? Then you're our next keynote. Seriously." : "Catch all twelve Octocats and the stage is yours."]),
+          NPC("alex", "Attendee Alex", 13, 7, { pack: "#1f6feb", arm: "#bf4b8a", hood: "#db61a2", stripe: "#ffadda", skin: "#e0ac69", hair: "#3b2416", cap: "#58a6ff", visor: "#1f6feb" }, () => [
+            "I got here early for the front row. Well, almost the front row.",
+            "Fun fact: GitHub Universe has been held right here at Fort Mason.",
+            bossBeaten ? "Wait, you're the one who resolved the Merge Conflict? Can I get a selfie?" : "I heard a Merge Conflict shows up when someone completes the Octodex..."])] },
+      { name: "Octodex Lab", w: 13, h: 9, floor: ["#e6edf3", "#d8e0e8"], wall: "#7d93ab", frames: true,
+        items: [{ kind: "shelf", x: 1, y: 2, w: 3, h: 1 }, { kind: "shelf", x: 9, y: 2, w: 3, h: 1 }, { kind: "case", x: 5, y: 4, w: 3, h: 1 }, { kind: "plant", x: 1, y: 7, w: 1, h: 1 }, { kind: "plant", x: 11, y: 7, w: 1, h: 1 }],
+        npcs: [NPC("cleo", "Curator Cleo", 9, 5, { pack: "#f0f6fc", arm: "#c9d1d9", hood: "#f0f6fc", stripe: "#d0d7de", skin: "#8d5524", hair: "#0d1117", cap: "#6e40c9", visor: "#3c1e70" }, () => {
+          const left = OCTOCATS.filter((c) => !collected.has(c.id)), pick = left[Math.floor(Math.random() * left.length)];
+          if (!collected.size) return ["Welcome to the Octodex Lab! Your Octodex is still empty.", "Walk into an Octocat out there: the first one joins you for free."];
+          if (left.length) return ["Let me check your Octodex... " + collected.size + " of " + OCTOCATS.length + " so far!", "My research says one is " + lc(pick.where), left.length <= 3 ? "Almost there! Just " + left.length + " to go." : "Keep exploring Fort Mason!"];
+          if (!bossBeaten) return ["All twelve! Remarkable.", "But a Merge Conflict is blocking the doors of Fort Mason Center. Bring your whole team, and some Hotfixes."];
+          return ["You completed the Octodex and resolved the Merge Conflict. The lab is in awe.", shinies.size ? "And " + shinies.size + " shiny! Golden data for my research." : "Next challenge: find a shiny one. About 1 wild Octocat in 20 is golden."];
+        })] },
+      { name: "Herbst Pavilion Booths", w: 15, h: 11, floor: ["#24425c", "#203c54"], wall: "#18263a", banners: [["Copilot", "#8957e5"], ["Swag", "#f0883e"]],
+        items: [{ kind: "booth", x: 2, y: 3, w: 4, h: 2, color: "#8957e5" }, { kind: "booth", x: 9, y: 3, w: 4, h: 2, color: "#f0883e" }, { kind: "plant", x: 7, y: 2, w: 1, h: 1 },
+          { kind: "plant", x: 0, y: 9, w: 1, h: 1 }, { kind: "plant", x: 14, y: 9, w: 1, h: 1 }],
+        npcs: [
+          NPC("copilot", "Copilot", 4, 6, { pack: "#58a6ff", arm: "#6e7681", hood: "#8b949e", stripe: "#c9d1d9", skin: "#c9d1d9", hair: "#8b949e", cap: "#a371f7", visor: "#58a6ff" }, () => [
+            "Hi, I'm Copilot! Want a suggestion?",
+            "Look for ▲ on the move buttons: super effective. Git moves are neutral, so they're safe against anyone.",
+            "Low on HP? A Hotfix restores half. Bad turn? A Revert undoes it, critical hits included."]),
+          NPC("jo", "Swag Hubber Jo", 11, 6, { pack: "#3fb950", arm: "#bd561d", hood: "#f0883e", stripe: "#ffa657", skin: "#f5c9a6", hair: "#d29922", cap: "#0d1117", visor: "#30363d" }, () =>
+            giveOnce("jo", { hotfix: 1 }) ? ["Welcome to the swag booth! Stickers, socks, and...", "...a Hotfix! On the house. (+1 Hotfix)"]
+              : ["Sorry, one Hotfix per attendee. The stickers are unlimited though!"])] },
+      { name: "Ship It Café", w: 9, h: 7, floor: ["#a77b52", "#9c7149"], wall: "#6e4b33", sign: ["SHIP IT CAFÉ", "#f0883e"],
+        items: [{ kind: "counter", x: 1, y: 2, w: 4, h: 1 }, { kind: "table", x: 6, y: 4, w: 2, h: 1 }, { kind: "plant", x: 7, y: 2, w: 1, h: 1 }],
+        npcs: [NPC("bea", "Barista Bea", 3, 3, { pack: "#6e3a1e", arm: "#3b2416", hood: "#6e3a1e", stripe: "#f2e3c2", skin: "#e0ac69", hair: "#0d1117", cap: "#f2e3c2", visor: "#a5835f" }, () =>
+          giveOnce("bea", { revert: 1 }) ? ["Welcome to Ship It Café! Coffee: the original continuous integration.", "Here, a Revert. Like decaf for bad decisions. (+1 Revert)"]
+            : ["Come back anytime. The espresso machine never goes down.", "Well. Almost never."])] }
+    ];
+    let room = null, roomT = 0, talk = null, talkTimer = null;
+    const roomDoorX = (r) => (Math.floor(r.w / 2) + 0.5) * TS;
+    function enterRoom(i) {
+      const def = ROOMS[i];
+      room = { def, i, x: roomDoorX(def), y: def.h * TS - 4 };
+      scene = "inside"; roomT = 2.6; player.dir = "up";
+      for (const n of def.npcs) n.pose.dir = "down";
+    }
+    function exitRoom() {
+      const b = BUILDINGS[room.i];
+      closeTalk(); room = null; scene = "world"; encounterCd = 1;
+      player.x = (b.x + b.w / 2) * TS; player.y = (b.y + b.h) * TS + 18; player.dir = "down";
+    }
+    function roomBlocked(x, y) {
+      const r = room.def, W = r.w * TS, H = r.h * TS;
+      if (x < 10 || x > W - 10 || y - 10 < 2 * TS) return true;
+      if (y > H - 4 && Math.abs(x - roomDoorX(r)) > 14) return true;
+      for (const it of r.items) if (x + 9 > it.x * TS && x - 9 < (it.x + it.w) * TS && y > it.y * TS && y - 10 < (it.y + it.h) * TS) return true;
+      for (const n of r.npcs) if (Math.hypot(x - (n.x * TS + TS / 2), y - (n.y * TS + TS - 4)) < 18) return true;
+      return false;
+    }
+    function updateInside(dt) {
+      if (talk) { player.moving = false; return; }
+      let dx = (keys[KEYS.right] || keys.ArrowRight ? 1 : 0) - (keys[KEYS.left] || keys.ArrowLeft ? 1 : 0) + pad.x;
+      let dy = (keys[KEYS.down] || keys.ArrowDown ? 1 : 0) - (keys[KEYS.up] || keys.ArrowUp ? 1 : 0) + pad.y;
+      dx = Math.max(-1, Math.min(1, dx)); dy = Math.max(-1, Math.min(1, dy));
+      player.moving = !!(dx || dy);
+      if (!player.moving) return;
+      if (Math.abs(dx) >= Math.abs(dy) && dx) player.dir = dx > 0 ? "right" : "left"; else player.dir = dy > 0 ? "down" : "up";
+      const n = Math.hypot(dx, dy), step = player.speed * dt, nx = room.x + dx / n * step, ny = room.y + dy / n * step;
+      if (!roomBlocked(nx, room.y)) room.x = nx;
+      if (!roomBlocked(room.x, ny)) room.y = ny;
+      if (room.y > room.def.h * TS + 2) exitRoom();             // out through the door
+    }
+    function nearNpc() {
+      let best = null, bd = 54;
+      for (const n of room.def.npcs) { const d = Math.hypot(room.x - (n.x * TS + TS / 2), room.y - (n.y * TS + TS - 4)); if (d < bd) { bd = d; best = n; } }
+      return best;
+    }
+    function tryTalk() {
+      const n = room && !talk && nearNpc();
+      if (!n) return;
+      const dx = room.x - (n.x * TS + TS / 2), dy = room.y - (n.y * TS + TS - 4), side = Math.abs(dx) > Math.abs(dy);
+      n.pose.dir = side ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+      player.dir = side ? (dx > 0 ? "left" : "right") : (dy > 0 ? "up" : "down"); player.moving = false; keys = {};
+      talk = { n, lines: n.say(), i: 0, typing: false };
+      $("talkWho").textContent = n.name; $("talk").hidden = false; showLine();
+      if (!talked.has(n.id)) {
+        talked.add(n.id); save();
+        if (ROOMS.every((r) => r.npcs.every((m) => talked.has(m.id)))) unlock("network");
+      }
+    }
+    function showLine() {
+      const el = $("talkText"), text = talk.lines[talk.i];
+      clearInterval(talkTimer); el.textContent = ""; $("talkSr").textContent = text; talk.typing = true; $("talk").classList.remove("done");
+      let k = 0;
+      talkTimer = setInterval(() => { el.textContent = text.slice(0, ++k); if (k >= text.length) finishLine(); }, 18);
+    }
+    function finishLine() { clearInterval(talkTimer); $("talkText").textContent = talk.lines[talk.i]; talk.typing = false; $("talk").classList.add("done"); }
+    function advanceTalk() {
+      if (!talk) return;
+      if (talk.typing) finishLine();
+      else if (++talk.i < talk.lines.length) showLine();
+      else closeTalk();
+    }
+    function closeTalk() {
+      clearInterval(talkTimer); talk = null; $("talk").hidden = true;
+      if (room) for (const n of room.def.npcs) n.pose.dir = "down";
+    }
+    $("talk").addEventListener("click", advanceTalk);
+
+    function drawItem(c, it) {
+      const X = it.x * TS, Y = it.y * TS, W = it.w * TS, H = it.h * TS, t = time;
+      c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(X + 4, Y + 6, W, H);
+      const box = (x, y, w, h, fill) => { c.fillStyle = fill; c.fillRect(x, y, w, h); };
+      if (it.kind === "desk" || it.kind === "table" || it.kind === "counter") {
+        const top = it.kind === "counter" ? "#d8c9a6" : it.kind === "desk" ? "#8c959f" : "#b08a5e";
+        box(X, Y + 4, W, H - 4, "rgba(0,0,0,.35)"); box(X, Y, W, H - 10, top); box(X, Y + H - 10, W, 10, it.kind === "counter" ? "#6e4428" : "#57606a");
+        if (it.kind === "desk") for (let k = 0; k < it.w; k++) { box(X + k * TS + 6, Y - 14, 20, 14, "#0d1117"); box(X + k * TS + 8, Y - 12, 16, 10, k % 2 ? "#1f6feb" : "#238636"); box(X + k * TS + 14, Y, 4, 3, "#30363d"); }
+        if (it.kind === "counter") { box(X + 8, Y - 16, 18, 16, "#30363d"); box(X + 11, Y - 12, 12, 6, "#c9d1d9"); for (let k = 1; k < it.w; k++) { box(X + k * TS + 10, Y + 2, 10, 8, "#f0f6fc"); box(X + k * TS + 12, Y + 3, 6, 3, "#6e3a1e"); } }
+        if (it.kind === "table") { box(X + 10, Y + 3, 9, 7, "#f0f6fc"); box(X + W - 26, Y + 4, 14, 6, "#3fb950"); }
+      } else if (it.kind === "shelf") {
+        box(X, Y - 10, W, H + 10, "#6e4428"); box(X + 3, Y - 7, W - 6, H + 4, "#3a2414");
+        const books = ["#f85149", "#58a6ff", "#3fb950", "#f2cc60", "#a371f7", "#ffa657"];
+        for (let k = 0; k < W / 7 - 1; k++) box(X + 5 + k * 7, Y - 5 + (k % 3), 5, 14 - (k % 3), books[k % books.length]);
+        box(X + 3, Y + 10, W - 6, 2, "#6e4428");
+      } else if (it.kind === "plant") {
+        box(X + 9, Y + 16, 14, 14, "#9a3a24"); box(X + 8, Y + 15, 16, 3, "#bd561d");
+        c.fillStyle = "#2ea043"; for (const [px, py, r] of [[16, 10, 8], [10, 8, 6], [22, 7, 6], [16, 2, 6]]) { c.beginPath(); c.arc(X + px, Y + py, r, 0, 7); c.fill(); }
+      } else if (it.kind === "seats") {
+        for (let k = 0; k < it.w * 2; k++) { box(X + k * 16 + 2, Y + 4, 12, 22, "#6e40c9"); box(X + k * 16 + 2, Y + 4, 12, 8, "#8957e5"); }
+      } else if (it.kind === "stage") {
+        box(X, Y + 8, W, H - 8, "#24292f"); box(X, Y + H - 8, W, 8, "#161b22"); box(X, Y + 8, W, 3, "#6e7681");
+        for (let k = 0; k < 5; k++) { c.fillStyle = `rgba(255,240,170,${0.5 + 0.3 * Math.sin(t * 3 + k)})`; c.beginPath(); c.arc(X + 20 + k * (W - 40) / 4, Y + H - 4, 3, 0, 7); c.fill(); }
+        box(X + W / 2 - 10, Y + 14, 20, 22, "#6e4428"); box(X + W / 2 - 12, Y + 12, 24, 4, "#8a5a36");
+      } else if (it.kind === "rack") {
+        box(X + 2, Y - 8, W - 4, H + 8, "#0d1117"); box(X + 4, Y - 6, W - 8, H + 4, "#161b22");
+        for (let k = 0; k < it.h * 4; k++) { box(X + 6, Y - 4 + k * 8, W - 12, 5, "#21262d"); c.fillStyle = Math.sin(t * 7 + k * 1.7 + X) > 0.2 ? "#3fb950" : "#0e4429"; c.fillRect(X + W - 10, Y - 3 + k * 8, 3, 3); }
+      } else if (it.kind === "boat") {
+        c.fillStyle = "#c0392b"; c.beginPath(); c.moveTo(X, Y + 10); c.lineTo(X + W, Y + 10); c.lineTo(X + W - 18, Y + H); c.lineTo(X + 18, Y + H); c.closePath(); c.fill();
+        box(X + 6, Y + 6, W - 12, 6, "#f0f6fc"); box(X + W / 2 - 2, Y - 26, 4, 34, "#6e4428");
+        c.fillStyle = "#f0f6fc"; c.beginPath(); c.moveTo(X + W / 2 + 2, Y - 24); c.lineTo(X + W / 2 + 30, Y + 4); c.lineTo(X + W / 2 + 2, Y + 4); c.closePath(); c.fill();
+      } else if (it.kind === "barrel") {
+        box(X + 6, Y + 4, 20, 26, "#8a5a36"); box(X + 6, Y + 9, 20, 3, "#3a2414"); box(X + 6, Y + 22, 20, 3, "#3a2414"); box(X + 8, Y + 2, 16, 4, "#a5835f");
+      } else if (it.kind === "booth") {
+        box(X, Y + 18, W, H - 18, it.color); box(X, Y + 18, W, 6, "rgba(255,255,255,.25)"); box(X + 4, Y + 30, W - 8, H - 34, "rgba(0,0,0,.2)");
+        box(X + 10, Y, 26, 18, "#0d1117"); box(X + 13, Y + 3, 20, 12, "#58a6ff"); box(X + W - 40, Y + 8, 12, 10, "#f2cc60"); box(X + W - 24, Y + 6, 12, 12, "#f778ba");
+      } else if (it.kind === "case") {
+        box(X, Y + 12, W, H - 12, "#57606a"); c.fillStyle = "rgba(160,210,255,.35)"; c.fillRect(X + 4, Y - 14, W - 8, 28);
+        c.strokeStyle = "rgba(255,255,255,.6)"; c.lineWidth = 1.5; c.strokeRect(X + 4.5, Y - 13.5, W - 9, 27);
+        drawOrb(c, X + W / 2, Y, 10, Math.sin(t * 2) * 0.2, 0.3 + 0.2 * Math.sin(t * 4));
+      }
+    }
+    function drawRoomWall(c, r, W) {
+      const g = c.createLinearGradient(0, 0, 0, 2 * TS); g.addColorStop(0, r.wall); g.addColorStop(1, "rgba(0,0,0,.25)");
+      c.fillStyle = r.wall; c.fillRect(0, 0, W, 2 * TS); c.fillStyle = g; c.fillRect(0, 0, W, 2 * TS);
+      c.fillStyle = "rgba(0,0,0,.35)"; c.fillRect(0, 2 * TS - 6, W, 6);
+      for (let x = TS; x < W - TS; x += 3 * TS) {                // windows onto the bay
+        if (r.screen || r.banners || r.frames) break;
+        const wg = c.createLinearGradient(0, 12, 0, 44); wg.addColorStop(0, "#9fd3ff"); wg.addColorStop(1, "#3b7dc4");
+        c.fillStyle = "#30363d"; c.fillRect(x - 2, 10, 36, 36); c.fillStyle = wg; c.fillRect(x, 12, 32, 32);
+        c.fillStyle = "rgba(255,255,255,.5)"; c.fillRect(x + 3, 15, 8, 3); c.fillStyle = "#30363d"; c.fillRect(x + 15, 12, 2, 32);
+      }
+      const plaque = (text, bg, x, w) => {
+        c.font = "900 12px ui-monospace, Menlo, monospace"; c.textAlign = "center"; c.textBaseline = "middle";
+        c.fillStyle = "#0d1117"; c.beginPath(); c.roundRect(x - w / 2 - 2, 14, w + 4, 30, 7); c.fill();
+        c.fillStyle = bg; c.beginPath(); c.roundRect(x - w / 2, 16, w, 26, 6); c.fill();
+        c.fillStyle = "#fff"; c.fillText(text, x, 29.5);
+      };
+      if (r.sign) { c.font = "900 12px ui-monospace, Menlo, monospace"; plaque(r.sign[0], r.sign[1], W / 2, c.measureText(r.sign[0]).width + 26); }
+      if (r.banners) r.banners.forEach(([text, bg], i) => plaque(text, bg, i ? W * 0.73 : W * 0.27, 110));
+      if (r.screen) {                                            // the keynote screen
+        const sw = 7 * TS - 20, sx = W / 2 - sw / 2, sg = c.createLinearGradient(sx, 0, sx + sw, 0);
+        sg.addColorStop(0, "#6e40c9"); sg.addColorStop(0.5, "#1f6feb"); sg.addColorStop(1, "#3fb950");
+        c.fillStyle = "#0d1117"; c.fillRect(sx - 4, 4, sw + 8, 56); c.fillStyle = sg; c.fillRect(sx, 8, sw, 48);
+        c.fillStyle = "#fff"; c.font = "900 16px ui-monospace, Menlo, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(r.screen, W / 2, 32);
+      }
+      if (r.frames) TITLE_CATS.slice(0, 3).forEach((cat, i) => {      // framed Octocats in the lab
+        const fx = W / 2 + (i - 1) * 64;
+        c.fillStyle = "#6e4428"; c.fillRect(fx - 22, 8, 44, 46); c.fillStyle = "#f0f6fc"; c.fillRect(fx - 18, 12, 36, 38);
+        drawOctocat(c, fx, 32, 30, cat.id, cat.color, 0, images[cat.id]);
+      });
+    }
+    function renderInside() {
+      const r = room.def, W = r.w * TS, H = r.h * TS, ox = Math.round((VW - W) / 2), oy = Math.round((VH - H) / 2) + 6, c = ctx;
+      c.fillStyle = "#070a12"; c.fillRect(0, 0, VW, VH);
+      c.save(); c.translate(ox, oy);
+      c.fillStyle = "#0b0f19"; c.fillRect(-8, -8, W + 16, H + 16);
+      for (let y = 2; y < r.h; y++) for (let x = 0; x < r.w; x++) { c.fillStyle = r.floor[(x + y) % 2]; c.fillRect(x * TS, y * TS, TS, TS); }
+      drawRoomWall(c, r, W);
+      const dx = roomDoorX(r);                                  // door mat
+      c.fillStyle = "#238636"; c.fillRect(dx - TS / 2 + 2, H - 14, TS - 4, 14); c.fillStyle = "#0b0f19"; c.fillRect(dx - TS / 2, H, TS, 8);
+      c.fillStyle = "#7ee787"; c.font = "900 9px ui-monospace, monospace"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("EXIT", dx, H - 7);
+      for (const it of r.items) drawItem(c, it);
+      const near = !talk && nearNpc();
+      const people = r.npcs.map((n) => ({ y: n.y * TS + TS - 4, draw: () => drawPlayer(c, n.x * TS + TS / 2, n.y * TS + TS - 4, time + n.x, n.pose, n.pal) }));
+      people.push({ y: room.y, draw: () => drawPlayer(c, room.x, room.y, time) });
+      people.sort((a, b) => a.y - b.y).forEach((p) => p.draw());
+      if (near) {                                               // speech bubble over whoever you can talk to
+        const bx = near.x * TS + TS / 2, by = near.y * TS - 30 + Math.sin(time * 6) * 2;
+        c.fillStyle = "#fff"; c.strokeStyle = "#0b0f19"; c.lineWidth = 2; c.beginPath(); c.roundRect(bx - 13, by - 10, 26, 18, 6); c.fill(); c.stroke();
+        c.fillStyle = "#0b0f19"; for (let k = -1; k <= 1; k++) { c.beginPath(); c.arc(bx + k * 6, by - 1, 2, 0, 7); c.fill(); }
+      }
+      c.restore();
+      if (roomT > 0) {                                          // room name banner, like the area banners outside
+        roomT -= frameDt;
+        const k = Math.min(1, roomT * 3, (2.6 - roomT) * 4), bx = 12 - (1 - k) * 320;
+        c.save(); c.globalAlpha = k; c.font = "bold 15px ui-monospace, Menlo, monospace";
+        const w = c.measureText(r.name).width + 34;
+        c.fillStyle = "rgba(13,17,23,.88)"; c.strokeStyle = "#e6edf3"; c.lineWidth = 2; c.beginPath(); c.roundRect(bx, 12, w, 38, 8); c.fill(); c.stroke();
+        c.fillStyle = "#58a6ff"; c.fillRect(bx + 8, 20, 4, 22);
+        c.fillStyle = "#e6edf3"; c.textAlign = "left"; c.textBaseline = "middle"; c.fillText(r.name, bx + 20, 31); c.restore();
+      }
+      if (near) {
+        const hint = "A / " + keyLabel(KEYS.talk) + ": talk to " + near.name;
+        c.font = "800 12px ui-monospace, Menlo, monospace"; const w = c.measureText(hint).width + 24;
+        c.fillStyle = "rgba(13,17,23,.88)"; c.beginPath(); c.roundRect(VW / 2 - w / 2, VH - 34, w, 24, 12); c.fill();
+        c.fillStyle = "#7ee787"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(hint, VW / 2, VH - 21.5);
+      }
     }
 
     /* ---------- Rendering ---------- */
@@ -1292,8 +1556,9 @@
       const paused = !$("settings").hidden;
       if (!paused && scene !== "title" && scene !== "credits") playTime += dt;
       if (scene === "battle") { if (!paused) updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
+      else if (scene === "inside") { if (!paused && $("inv").hidden) updateInside(dt); renderInside(); }
       else { if (scene === "world" && $("inv").hidden && !paused) update(dt); render(); }
-      if (toastT <= 0 && achQueue.length && (scene === "world" || scene === "credits")) { const a = achQueue.shift(); toast("🏆 Achievement unlocked: " + a.icon + " " + a.name, 2.8); }
+      if (toastT <= 0 && achQueue.length && (scene === "world" || scene === "inside" || scene === "credits")) { const a = achQueue.shift(); toast("🏆 Achievement unlocked: " + a.icon + " " + a.name, 2.8); }
       if (toastT > 0 && scene !== "world" && (toastT -= dt) <= 0) $("toast").classList.remove("show");
       requestAnimationFrame(loop);
     }
@@ -1882,7 +2147,7 @@
     $("runBtn").addEventListener("click", runAway);
     $("pickRun").addEventListener("click", runAway);
     $("resetBtn").addEventListener("click", () => {
-      collected = new Set(); bag = { hotfix: 0, revert: 0 }; bossBeaten = false; shinies = new Set(); trainersBeaten = new Set(); playTime = 0; save(); selected = null; updateCount(); renderInventory();
+      collected = new Set(); bag = { hotfix: 0, revert: 0 }; bossBeaten = false; shinies = new Set(); trainersBeaten = new Set(); playTime = 0; talked = new Set(); gifts = new Set(); save(); selected = null; updateCount(); renderInventory();
       $("detail").textContent = "Progress reset. Go find them again!";
     });
 
@@ -1891,7 +2156,7 @@
 
     /* ---------- Settings: volumes, colour-blind palette, calmer effects, key bindings ---------- */
     const KEY_ACTIONS = [["up", "Move up", "w"], ["down", "Move down", "s"], ["left", "Move left", "a"], ["right", "Move right", "d"], ["dex", "Octodex", "i"],
-      ["switch", "Switch Octocat", "s"], ["hotfix", "Hotfix", "h"], ["revert", "Revert", "r"], ["run", "Run", "Escape"], ["music", "Music on/off", "m"]];
+      ["switch", "Switch Octocat", "s"], ["hotfix", "Hotfix", "h"], ["revert", "Revert", "r"], ["run", "Run", "Escape"], ["talk", "Talk", "e"], ["music", "Music on/off", "m"]];
     const KEYS = Object.fromEntries(KEY_ACTIONS.map(([id, , k]) => [id, k]));
     const SETTINGS_KEY = "fort-mason-octodex-settings";
     const BASE_COLORS = Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.color]));
@@ -1923,7 +2188,7 @@
       $("switchBtn").textContent = "Switch (" + keyLabel(KEYS.switch) + ")"; $("runBtn").textContent = "Run (" + keyLabel(KEYS.run) + ")";
       $("help").innerHTML = "Move with " + kb("up") + kb("left") + kb("down") + kb("right") + " or arrow keys. Walk into an Octocat to collect it. " + kb("dex") + " opens the Octodex, " + kb("music") +
         " toggles music, <kbd>1</kbd>–<kbd>4</kbd> pick a move in battle, " + kb("hotfix") + " uses a Hotfix, " + kb("revert") + " a Revert, " + kb("switch") +
-        " switches Octocat. Code beats Ops, Ops beats Security, Security beats Code. Your progress is saved in this browser.";
+        " switches Octocat. Walk up into a door to go inside; " + kb("talk") + " or Enter talks to people. Code beats Ops, Ops beats Security, Security beats Code. Your progress is saved in this browser.";
       const box = $("keys"); box.textContent = "";
       for (const [id, name] of KEY_ACTIONS) {
         const row = document.createElement("div"), b = document.createElement("button");
@@ -1967,6 +2232,10 @@
         else if (scene === "battle" && k === KEYS.revert) useItem("revert");
         return;
       }
+      if (scene === "inside") {
+        if (talk) { if (k === "Enter" || k === " " || k === KEYS.talk || k === "Escape") { e.preventDefault(); k === "Escape" ? closeTalk() : advanceTalk(); } return; }
+        if (k === "Enter" || k === " " || k === KEYS.talk) { e.preventDefault(); tryTalk(); return; }
+      }
       if (k === KEYS.dex) { setInventory($("inv").hidden); return; }
       if (k === "Escape" && !$("inv").hidden) { setInventory(false); return; }
       if (isMoveKey(k) && $("inv").hidden) { keys[k] = true; e.preventDefault(); }
@@ -2002,7 +2271,7 @@
       const held = (k) => badgeHeld.has(k) || touchHeld.has(k);
       x += (b(15) || held("right") ? 1 : 0) - (b(14) || held("left") ? 1 : 0);
       y += (b(13) || held("down") ? 1 : 0) - (b(12) || held("up") ? 1 : 0);
-      const inGame = scene === "world" && $("inv").hidden && $("settings").hidden;
+      const inGame = (scene === "world" || (scene === "inside" && !talk)) && $("inv").hidden && $("settings").hidden;
       pad.x = inGame ? x : 0; pad.y = inGame ? y : 0;
       const A = b(0) || held("select"), B = b(1) || held("back");
       const Y = b(3) || b(9);
@@ -2039,6 +2308,9 @@
           if (A && !was.A) btns[i].click();
         }
         if (B && !was.B) runAway();
+      } else if (scene === "inside") {
+        if (A && !was.A) talk ? advanceTalk() : tryTalk();
+        else if (B && !was.B && talk) closeTalk();
       } else if (scene === "world") {
         if (A && !was.A && inGame) setInventory(true);
         else if (B && !was.B && !inGame) setInventory(false);
