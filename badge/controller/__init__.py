@@ -16,6 +16,7 @@ move, Select sends "move N", ← sends "switch" and → sends "run"; in a pick
 menu ↑ ↓ choose and Select sends "pick N". The +x / -x lines are always sent.
 """
 import json
+import math
 import select
 import sys
 
@@ -56,27 +57,32 @@ PAD = {
 }
 LABELS = {"select": "Select", "back": "Back"}
 
-# Second screen colours
+# Second screen colours (GitHub dark)
 panel = color.rgb(22, 27, 34)
+raised = color.rgb(40, 46, 54)
+edge = color.rgb(48, 54, 61)
+faint = color.rgb(72, 79, 88)
 yellow = color.rgb(227, 179, 65)
 red = color.rgb(248, 81, 73)
+shade = color.rgb(0, 0, 0, 110)
+glow = color.rgb(255, 255, 255, 70)
 TYPE_COLOURS = {
     "Code": color.rgb(88, 166, 255),
     "Ops": color.rgb(240, 136, 62),
     "Security": color.rgb(248, 81, 73),
     "Git": color.rgb(188, 140, 255),
 }
-# Map tiles: (fill, dot or None); water dark, land light, buildings solid, paths dotted
-TILES = {
-    "~": (color.rgb(13, 45, 90), None),
-    "P": (color.rgb(150, 112, 74), None),
-    "B": (color.rgb(48, 54, 61), None),
-    "=": (color.rgb(176, 214, 140), color.rgb(120, 92, 60)),
-    "#": (color.rgb(176, 214, 140), color.rgb(72, 78, 86)),
-    "T": (color.rgb(74, 140, 82), None),
-    ".": (color.rgb(176, 214, 140), None),
-}
-MAP_TOP, MAP_BOTTOM = 26, 204
+
+# Map tiles: water dark, land light, buildings solid, paths dotted
+WATER, WAVE = color.rgb(16, 52, 98), color.rgb(46, 98, 156)
+GRASS, GRASS_ALT = color.rgb(118, 180, 92), color.rgb(110, 171, 86)
+SAND, SAND_DOT = color.rgb(224, 202, 152), color.rgb(176, 146, 100)
+SHORE = color.rgb(236, 220, 178)
+PIER, PIER_SEAM = color.rgb(156, 112, 70), color.rgb(112, 78, 48)
+ROOF, ROOF_TOP, WALL, WINDOW = color.rgb(76, 84, 98), color.rgb(110, 120, 136), color.rgb(42, 46, 56), color.rgb(242, 204, 96)
+STREET, STREET_LINE = color.rgb(72, 78, 88), color.rgb(200, 204, 210)
+CANOPY, CANOPY_LIGHT = color.rgb(46, 112, 60), color.rgb(84, 150, 76)
+MAP_TOP, MAP_BOTTOM = 32, 200
 
 # Serial input from the game: only the latest message is kept, the map is kept apart
 stdin = select.poll()
@@ -85,6 +91,20 @@ incoming = []
 latest = None
 world_map = None  # (image, left, top, tile size)
 choice = 0  # local highlight in battle moves / pick options
+shown_hp = {}  # side -> (name, hp drawn), so HP bars slide instead of jumping
+last_frame = None
+
+
+def load_mona(name, frames):
+    """Mona's animation from the Merge Conflict app, or None when it is not on the badge."""
+    try:
+        sheet = image.load("/system/apps/merge_conflict/mona-%s.png" % name)
+    except OSError:
+        return None
+    return sheet, sheet.width // frames, sheet.height, frames
+
+
+MONA = {"default": load_mona("default", 11), "dance": load_mona("dance", 6)}
 
 
 def centered(text, top, size, pen):
@@ -112,26 +132,78 @@ def hello():
 
 
 def build_map(message):
-    """Draws the map once into an image, one rectangle per run of identical tiles."""
+    """Draws the map once into an image: textured tiles, shores, roofs with lit windows, trees."""
     rows, w, h = message["rows"], message["w"], message["h"]
     size = max(1, min(WIDTH // w, (MAP_BOTTOM - MAP_TOP) // h))
     canvas = image(w * size, h * size)
     canvas.antialias = image.OFF
+
+    def at(x, y):
+        if 0 <= y < len(rows) and 0 <= x < len(rows[y]):
+            return rows[y][x]
+        return "~"
+
+    mid, dot = size // 2, max(1, size // 3)
     for y, row in enumerate(rows):
-        x = 0
-        while x < len(row):
-            end = x
-            while end < len(row) and row[end] == row[x]:
-                end += 1
-            fill, dot = TILES.get(row[x], TILES["."])
-            canvas.pen = fill
-            canvas.rectangle(x * size, y * size, (end - x) * size, size)
-            if dot is not None:
-                canvas.pen = dot
-                d = max(1, size // 3)
-                for tx in range(x, end):
-                    canvas.rectangle(tx * size + (size - d) // 2, y * size + (size - d) // 2, d, d)
-            x = end
+        for x, tile in enumerate(row):
+            px, py = x * size, y * size
+            if tile == "~":
+                canvas.pen = WATER
+                canvas.rectangle(px, py, size, size)
+                if (x * 3 + y * 5) % 7 == 0:
+                    canvas.pen = WAVE
+                    canvas.rectangle(px + 1, py + mid, size - 2, 1)
+                continue
+            if tile == "P":
+                canvas.pen = PIER
+                canvas.rectangle(px, py, size, size)
+                canvas.pen = PIER_SEAM
+                canvas.rectangle(px, py + size - 1, size, 1)
+                continue
+            if tile == "B":
+                canvas.pen = ROOF
+                canvas.rectangle(px, py, size, size)
+                if at(x, y - 1) != "B":
+                    canvas.pen = ROOF_TOP
+                    canvas.rectangle(px, py, size, 1)
+                if at(x, y + 1) != "B":
+                    canvas.pen = WALL
+                    canvas.rectangle(px, py + size - 2, size, 2)
+                elif x % 2 == 0 and y % 2 == 1:
+                    canvas.pen = WINDOW
+                    canvas.rectangle(px + mid - 1, py + mid - 1, 2, 2)
+                continue
+            if tile == "#":
+                canvas.pen = STREET
+                canvas.rectangle(px, py, size, size)
+                if y % 2 == 0 and at(x + 1, y) == "#":
+                    canvas.pen = STREET_LINE
+                    canvas.rectangle(px + size - 1, py + 1, 2, size - 2)
+                continue
+            if tile == "=":
+                canvas.pen = SAND
+                canvas.rectangle(px, py, size, size)
+                if (x + y) % 2 == 0:
+                    canvas.pen = SAND_DOT
+                    canvas.rectangle(px + (size - dot) // 2, py + (size - dot) // 2, dot, dot)
+            else:
+                canvas.pen = GRASS if (x + y) % 2 else GRASS_ALT
+                canvas.rectangle(px, py, size, size)
+            # Sandy shore where land meets the bay
+            canvas.pen = SHORE
+            if at(x, y - 1) == "~":
+                canvas.rectangle(px, py, size, 1)
+            if at(x, y + 1) == "~":
+                canvas.rectangle(px, py + size - 1, size, 1)
+            if at(x - 1, y) == "~":
+                canvas.rectangle(px, py, 1, size)
+            if at(x + 1, y) == "~":
+                canvas.rectangle(px + size - 1, py, 1, size)
+            if tile == "T":
+                canvas.pen = CANOPY
+                canvas.circle(vec2(px + size / 2, py + size / 2), size * 0.6)
+                canvas.pen = CANOPY_LIGHT
+                canvas.circle(vec2(px + size / 2 - 1, py + size / 2 - 1), size * 0.25)
     return canvas, (WIDTH - w * size) // 2, MAP_TOP + (MAP_BOTTOM - MAP_TOP - h * size) // 2, size
 
 
@@ -238,6 +310,51 @@ def write_right(text, right, y, size, pen):
     write(text, right - width, y, size, pen)
 
 
+def box(x, y, w, h, fill, border=None, radius=6):
+    """Rounded panel, with a 1 px border when given."""
+    if border is not None:
+        screen.pen = border
+        screen.shape(shape.rounded_rectangle(x, y, w, h, radius))
+        x, y, w, h, radius = x + 1, y + 1, w - 2, h - 2, max(1, radius - 1)
+    screen.pen = fill
+    screen.shape(shape.rounded_rectangle(x, y, w, h, radius))
+
+
+def pill(text, right, y, size, fill, ink):
+    """A rounded label ending at x = right; returns its left edge."""
+    width, _ = screen.measure_text(text, font_size=size)
+    left = right - width - 10
+    box(left, y, width + 10, size + 5, fill, radius=(size + 5) // 2)
+    write(text, left + 5, y + 2, size, ink)
+    return left
+
+
+def bar(x, y, w, h, share, fill):
+    box(x, y, w, h, idle, radius=h // 2)
+    if share > 0:
+        box(x, y, max(h, int(w * min(1, share))), h, fill, radius=h // 2)
+        screen.pen = glow
+        screen.rectangle(x + h // 2, y + 1, max(0, int(w * min(1, share)) - h), 1)
+
+
+def draw_mona(name, x, y, scale):
+    mona = MONA.get(name) or MONA.get("default")
+    if mona is None:
+        return
+    sheet, w, h, frames = mona
+    frame = (badge.ticks // 110) % frames
+    screen.blit(sheet, rect(frame * w, 0, w, h), rect(x, y, w * scale, h * scale))
+
+
+def stars(count, top, bottom):
+    """A slow twinkle of fixed stars."""
+    for i in range(count):
+        x, y = (i * 97 + 13) % WIDTH, top + (i * 57 + 29) % (bottom - top)
+        level = 0.5 + 0.5 * math.sin(badge.ticks / 600 + i * 1.7)
+        screen.pen = color.rgb(200, 220, 255, int(60 + 150 * level))
+        screen.circle(vec2(x, y), 0.6 + level)
+
+
 def draw_controller():
     screen.pen = background
     screen.clear()
@@ -256,120 +373,186 @@ def draw_controller():
 
 
 def draw_title(message):
-    centered("FORT MASON", 70, 28, white)
-    centered("OCTODEX", 104, 28, lit)
-    centered("press a button", 160, 14, dim)
+    stars(36, 0, HEIGHT)
+    bob = int(3 * math.sin(badge.ticks / 300))
+    draw_mona("dance", (WIDTH - 112) // 2, 14 + bob, 4)
+    centered("FORT MASON", 118, 22, white)
+    centered("OCTODEX", 142, 36, lit)
+    if (badge.ticks // 600) % 2 == 0:
+        centered("press a button", 204, 14, dim)
 
 
 def draw_world(message):
-    write(fit(message.get("area", ""), 18, WIDTH - 16), 8, 3, 18, white)
+    # Header: map pin, area name, team level
+    box(0, -6, WIDTH, 32, panel, edge)
+    screen.pen = red
+    screen.circle(vec2(14, 10), 5)
+    screen.triangle(vec2(9.5, 12), vec2(18.5, 12), vec2(14, 20))
+    screen.pen = panel
+    screen.circle(vec2(14, 10), 2)
+    left = pill("Lv %s" % message.get("lv", 1), WIDTH - 8, 4, 13, lit, background)
+    write(fit(message.get("area", ""), 17, left - 34), 26, 3, 17, white)
+
     if world_map is None:
         centered("waiting for the map...", 110, 14, dim)
     else:
-        canvas, left, top, size = world_map
-        screen.blit(canvas, rect(left, top, canvas.width, canvas.height))
+        canvas, mx, my, size = world_map
+        box(mx - 3, my - 3, canvas.width + 6, canvas.height + 6, edge, radius=5)
+        screen.blit(canvas, rect(mx, my, canvas.width, canvas.height))
         half = size / 2
-        for x, y in message.get("left", ()):
-            cx, cy = left + x * size + half, top + y * size + half
+        for i, (x, y) in enumerate(message.get("left", ())):
+            cx, cy = mx + x * size + half, my + y * size + half
+            twinkle = 0.5 + 0.5 * math.sin(badge.ticks / 250 + i * 1.3)
+            screen.pen = shade
+            screen.circle(vec2(cx + 1, cy + 1), 3.2)
             screen.pen = background
-            screen.circle(vec2(cx, cy), max(2, size * 0.5) + 1)
+            screen.circle(vec2(cx, cy), 3.4 + twinkle * 0.6)
             screen.pen = yellow
-            screen.circle(vec2(cx, cy), max(2, size * 0.5))
+            screen.circle(vec2(cx, cy), 2.4 + twinkle * 0.6)
+            screen.pen = white
+            screen.circle(vec2(cx - 0.8, cy - 0.8), 0.8)
         me = message.get("me")
         if me:
-            cx, cy = left + me[0] * size + half, top + me[1] * size + half
+            cx, cy = mx + me[0] * size + half, my + me[1] * size + half
+            pulse = (badge.ticks % 1200) / 1200
+            screen.pen = color.rgb(255, 255, 255, int(180 * (1 - pulse)))
+            screen.shape(shape.arc(cx, cy, 4 + pulse * 9, 5.5 + pulse * 9, 0, 360))
             arm = max(3, size)
             for colour, offset in ((white, 1), (red, 0)):
                 screen.pen = colour
                 for dx in range(-offset, offset + 1):
                     screen.line(vec2(cx - arm + dx, cy - arm), vec2(cx + arm + dx, cy + arm))
                     screen.line(vec2(cx - arm + dx, cy + arm), vec2(cx + arm + dx, cy - arm))
-    write("Octodex %s/%s" % (message.get("dex", 0), message.get("total", 0)), 8, 214, 16, white)
-    write_right("Team Lv %s" % message.get("lv", 1), WIDTH - 8, 214, 16, lit)
+
+    # Footer: Octodex progress
+    dex, total = message.get("dex", 0), max(1, message.get("total", 1))
+    write("Octodex", 10, 209, 12, dim)
+    write_right("%s/%s" % (dex, total), WIDTH - 10, 210, 16, white)
+    bar(10, 226, WIDTH - 72, 8, dex / total, yellow)
 
 
 def draw_dex(message):
-    found = message.get("found", ())
+    found, total = message.get("found", ()), max(1, message.get("total", 1))
     write("Octodex", 10, 6, 22, white)
-    write_right("%d/%s" % (len(found), message.get("total", 0)), WIDTH - 10, 8, 20, lit)
-    for i, name in enumerate(found[:20]):
-        column, row = divmod(i, 10)
-        write(fit(name, 14, 146), 12 + column * 156, 42 + row * 19, 14, white)
-    if not found:
-        centered("no Octocats yet", 110, 14, dim)
+    write_right("%d/%d" % (len(found), total), WIDTH - 10, 9, 18, lit)
+    bar(10, 36, WIDTH - 20, 6, len(found) / total, lit)
+    rows = (min(total, 12) + 1) // 2
+    height = min(29, (HEIGHT - 50) // max(1, rows))
+    for i in range(min(total, 2 * rows)):
+        column, row = divmod(i, rows)
+        x, y = 8 + column * 156, 50 + row * height
+        known = i < len(found)
+        box(x, y, 148, height - 4, raised if known else panel, edge if known else None, radius=5)
+        cy = y + (height - 4) / 2
+        screen.pen = lit if known else idle
+        screen.circle(vec2(x + 13, cy), 7)
+        if known:
+            screen.pen = background
+            screen.line(vec2(x + 9, cy), vec2(x + 12, cy + 3))
+            screen.line(vec2(x + 12, cy + 3), vec2(x + 17, cy - 3))
+            write(fit(found[i], 13, 118), x + 26, cy - 8, 13, white)
+        else:
+            write("?", x + 10.5, cy - 7, 12, faint)
+            write("???", x + 26, cy - 8, 13, faint)
 
 
 def draw_pick(message):
-    lines = wrap(message.get("title", ""), 16, WIDTH - 20)[:2]
+    lines = wrap(message.get("title", ""), 15, WIDTH - 24)[:2]
+    box(0, -6, WIDTH, 14 + 19 * len(lines), panel, edge)
     for i, line in enumerate(lines):
-        write(line, 10, 6 + i * 20, 16, white)
+        write(line, 12, 4 + i * 19, 15, white)
     options = message.get("options", ())[:9]
-    top, height = 52, 22
-    visible = (HEIGHT - 24 - top) // height
+    top, height = 18 + 19 * len(lines), 30
+    visible = (HEIGHT - 20 - top) // height
     first = min(max(0, choice - visible + 1), max(0, len(options) - visible))
     for i in range(first, min(len(options), first + visible)):
         y = top + (i - first) * height
-        if i == choice:
-            screen.pen = lit
-            screen.shape(shape.rounded_rectangle(6, y, WIDTH - 12, height - 2, 4))
-        write(fit("%d  %s" % (i + 1, options[i]), 14, WIDTH - 28), 14, y + 3, 14, background if i == choice else white)
-    centered("Up/Down choose · Select pick · Back run", 222, 12, dim)
+        selected = i == choice
+        box(8, y, WIDTH - 16, height - 4, raised if selected else panel, lit if selected else edge, radius=6)
+        cy = y + (height - 4) / 2
+        screen.pen = lit if selected else idle
+        screen.circle(vec2(24, cy), 8)
+        number = str(i + 1)
+        width, _ = screen.measure_text(number, font_size=12)
+        write(number, 24 - width / 2, cy - 7, 12, background if selected else dim)
+        write(fit(options[i], 14, WIDTH - 60), 40, cy - 8, 14, white)
+    centered("Up/Down choose · Select pick · Back run", 224, 11, dim)
 
 
-def hp_bar(side, y, numbers):
-    hp, top = max(0, side.get("hp", 0)), max(1, side.get("max", 1))
-    width = 228 if numbers else 300
-    screen.pen = idle
-    screen.rectangle(10, y, width, 8)
-    share = min(1, hp / top)
-    screen.pen = lit if share > 0.5 else yellow if share > 0.2 else red
-    screen.rectangle(10, y, int(width * share), 8)
-    if numbers:
-        write_right("%d/%d" % (hp, top), WIDTH - 10, y - 4, 14, white)
+def slide_hp(key, side, dt):
+    """The HP drawn moves towards the real HP, so damage drains the bar."""
+    name, hp = side.get("name", ""), max(0, side.get("hp", 0))
+    old = shown_hp.get(key)
+    if old is None or old[0] != name:
+        shown = hp
+    else:
+        shown = old[1] + (hp - old[1]) * min(1, dt / 250)
+        if abs(shown - hp) < 0.2:
+            shown = hp
+    shown_hp[key] = (name, shown)
+    return shown
 
 
-def side_header(side, y):
+def side_card(side, y, h, key, numbers, dt):
+    box(6, y, WIDTH - 12, h, panel, edge, radius=7)
+    kind = side.get("type", "")
+    left = pill(kind, WIDTH - 14, y + 5, 11, TYPE_COLOURS.get(kind, dim), background)
     stages = "".join(" %s%+d" % (name.upper(), side.get(name, 0)) for name in ("atk", "def") if side.get(name))
-    right = "Lv %s · %s%s" % (side.get("lv", "?"), side.get("type", ""), stages)
-    write_right(right, WIDTH - 10, y + 3, 13, TYPE_COLOURS.get(side.get("type"), dim))
-    width, _ = screen.measure_text(right, font_size=13)
-    write(fit(side.get("name", ""), 17, WIDTH - 30 - width), 10, y, 17, white)
+    level = "Lv %s%s" % (side.get("lv", "?"), stages)
+    width, _ = screen.measure_text(level, font_size=12)
+    write(level, left - width - 6, y + 6, 12, dim)
+    write(fit(side.get("name", ""), 16, left - width - 30), 14, y + 3, 16, white)
+    hp, top = slide_hp(key, side, dt), max(1, side.get("max", 1))
+    share = hp / top
+    colour = lit if share > 0.5 else yellow if share > 0.2 else red
+    write("HP", 14, y + h - 14, 10, dim)
+    bar(32, y + h - 12, (WIDTH - 104) if numbers else (WIDTH - 52), 7, share, colour)
+    if numbers:
+        write_right("%d/%d" % (round(hp), top), WIDTH - 14, y + h - 17, 13, white)
 
 
 def draw_battle(message):
-    foe, me = message.get("foe", {}), message.get("me", {})
-    side_header(foe, 4)
-    hp_bar(foe, 26, False)
-    side_header(me, 42)
-    hp_bar(me, 64, True)
+    global last_frame
+    now = badge.ticks
+    dt = 0 if last_frame is None else min(200, now - last_frame)
+    last_frame = now
+    side_card(message.get("foe", {}), 4, 40, "foe", False, dt)
+    side_card(message.get("me", {}), 48, 42, "me", True, dt)
     if message.get("busy"):
-        lines = wrap(message.get("msg", ""), 22, WIDTH - 24)[:4]
-        top = 82 + (HEIGHT - 82 - len(lines) * 28) // 2
+        box(6, 98, WIDTH - 12, 136, panel, edge, radius=8)
+        text = message.get("msg", "")
+        draw_mona("dance" if "super" in text.lower() else "default", 16, 140, 2)
+        lines = wrap(text, 18, WIDTH - 104)[:5]
+        top = 98 + (136 - len(lines) * 24) // 2
         for i, line in enumerate(lines):
-            centered(line, top + i * 28, 22, white)
+            write(line, 82, top + i * 24, 18, white)
+        if (now // 400) % 2 == 0:
+            screen.pen = dim
+            screen.triangle(vec2(WIDTH - 26, 220), vec2(WIDTH - 16, 220), vec2(WIDTH - 21, 226))
         return
     for i, move in enumerate(message.get("moves", ())[:4]):
-        y = 82 + i * 35
+        y = 96 + i * 32
         selected = i == choice
-        screen.pen = lit if selected else panel
-        screen.shape(shape.rounded_rectangle(6, y, WIDTH - 12, 32, 5))
-        ink, faint = (background, background) if selected else (white, dim)
-        kind = move.get("kind", "atk")
-        if kind == "atk":
+        kind = move.get("type", "")
+        tint = TYPE_COLOURS.get(kind, dim)
+        box(6, y, WIDTH - 12, 29, raised if selected else panel, lit if selected else edge, radius=6)
+        screen.pen = tint
+        screen.shape(shape.rounded_rectangle(8, y + 4, 4, 21, 2))
+        write(fit(move.get("n", ""), 14, 196), 20, y + 1, 14, white)
+        if move.get("kind", "atk") == "atk":
             stats = "pow %s · acc %s" % (move.get("pow", 0), move.get("acc", 100))
         else:
-            stats = "%s · acc %s" % (kind, move.get("acc", 100))
+            stats = "%s · acc %s" % (move.get("kind"), move.get("acc", 100))
+        write(kind, 20, y + 16, 10, tint)
+        width, _ = screen.measure_text(kind + "  ", font_size=10)
+        write(stats, 20 + width, y + 16, 10, dim)
         eff = move.get("eff", 1)
-        tag = "SUPER" if eff == 2 else "weak" if eff == 0.5 else ""
-        write(fit(move.get("n", ""), 15, 190), 14, y + 2, 15, ink)
-        if tag:
-            write_right(tag, WIDTH - 14, y + 3, 14, ink if selected else lit if eff == 2 else red)
-        screen.pen = ink if selected else TYPE_COLOURS.get(move.get("type"), dim)
-        screen.text(move.get("type", ""), 14, y + 18, 11)
-        type_width, _ = screen.measure_text(move.get("type", "") + "  ", font_size=11)
-        write(stats, 14 + type_width, y + 18, 11, faint)
+        if eff == 2:
+            pill("SUPER", WIDTH - 14, y + 7, 11, lit, background)
+        elif eff == 0.5:
+            pill("weak", WIDTH - 14, y + 7, 11, idle, red)
     switch = "Left switch · " if message.get("canSwitch") else ""
-    centered(switch + "Right run · Select use", 224, 12, dim)
+    centered(switch + "Right run · Select use", 226, 11, dim)
 
 
 SCREENS = {"title": draw_title, "world": draw_world, "dex": draw_dex, "pick": draw_pick, "battle": draw_battle}

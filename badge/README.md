@@ -10,7 +10,8 @@ The **Controller** app for the GitHub Universe '26 badge (**GitHub Badger 2350**
 - Every press and release of Up, Down, Left, Right, Select and Back is still printed as `+up` / `-up` (and so on), exactly like the original app.
 - At startup, and whenever it reads the line `?`, it prints `hello display 1`.
 - It reads the game's JSON lines without blocking the button loop, keeps only the latest message, and keeps the `map` apart.
-- Screens: title, world (mini-map with the player as a red cross and the remaining Octocats as yellow dots, area, Octodex count, team level), Octodex, pick menu and battle (names, level, type, HP bars, the 4 moves with type, power / accuracy and SUPER / weak, or the turn message in large text).
+- Screens: title (dancing Mona on a starry sky), world (textured mini-map with shores, roofs, trees and paths; the player as a pulsing red cross, the remaining Octocats as twinkling yellow dots; area, team level and an Octodex progress bar), Octodex (found and missing Octocats as a grid), pick menu (numbered cards) and battle (cards with type badges, HP bars that drain smoothly, the 4 moves with type, power / accuracy and SUPER / weak badges, or the turn message in a dialog box with Mona).
+- Mona's animations come from the Merge Conflict app on the badge (`/system/apps/merge_conflict/mona-*.png`); without it the screens still work, just without Mona.
 - Until the game sends something to draw, the original Controller screen is shown.
 
 ## Buttons
