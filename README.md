@@ -6,6 +6,7 @@ Explore Fort Mason, find the twelve Octocats hidden around the piers, the Great 
 
 ▶ **Play in the browser:** https://akiyo974.github.io/Mona-Game/
 (published by GitHub Pages from `main`; see [Publish on GitHub Pages](#publish-on-github-pages))
+On a phone, use **Add to Home Screen** (or the **Install app** button in Chrome / Edge) to get it as a full-screen app that also plays offline.
 
 https://github.com/user-attachments/assets/139ef6e9-4731-408f-80e7-a98b704ab7c9
 
@@ -41,7 +42,12 @@ Want to add an Octocat, a move or an item? See [CONTRIBUTING.md](CONTRIBUTING.md
 - Title screen, location banners, minimap and "!" alerts when a wild Octocat is near.
 - Your first Octocat is free; after that, pick one of yours and battle to catch the next.
 - Catch all twelve and a **Merge Conflict** boss blocks Fort Mason Center: its changes flip between Code, Ops and Security every turn. Resolve it to roll the credits.
-- Progress (Octodex, items, boss, position) is saved in your browser; the title screen offers **Continue**.
+- Three trainers wait on the paths: **Intern Ida**, **Senior Dev Sam** (2 Octocats) and **Staff Engineer Robin** (3). Beat them for items and a hint about where an Octocat hides.
+- About 1 wild Octocat in 20 is **shiny**: a golden coat with twinkling stars, and a ★ in your Octodex.
+- 11 **achievements** in the Octodex, GitHub-profile style: First Commit, Pull Shark, Arctic Code Vault, Quickdraw, Galaxy Brain, Time Traveler, Mentor, Starstruck, Pair Extraordinaire, YOLO and Speedrunner (Merge Conflict resolved in under 15 minutes).
+- A play timer: the credits show your time and your best.
+- Progress (Octodex, items, trainers, boss, position, time) is saved in your browser; the title screen offers **Continue**. Achievements and your best time survive **Reset progress**.
+- **Settings**: separate music and sound-effect volumes, a colour-blind friendly type palette (Okabe-Ito), "reduce screen shake and flashes", and remappable keys.
 - Battle intro transition, animated HP bars, screen shake, particles, damage numbers and typewriter dialogue.
 
 **Battle system**
@@ -88,7 +94,7 @@ Want to add an Octocat, a move or an item? See [CONTRIBUTING.md](CONTRIBUTING.md
 | Octodex | <kbd>I</kbd> | Y / A | A opens, B closes | back closes |
 | Music on/off | <kbd>M</kbd> | | Music button | |
 
-Music starts on your first key press or click. The badge connects with the **Connect badge** button (Web Serial, Chrome or Edge only).
+Keys can be changed in **Settings**; the arrow keys always move. Music starts on your first key press or click. The badge connects with the **Connect badge** button (Web Serial, Chrome or Edge only).
 
 ## Bonus: Badger mode
 

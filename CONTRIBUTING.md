@@ -15,7 +15,12 @@ The whole game is one file: [`.github/extensions/monas-octoverse-arcade-starter/
 | How each Octocat is drawn | `OCTOCAT_STYLES` and `drawOctocat()` |
 | Items (Hotfix, Revert) | `useItem()` and `collect()` |
 | The Merge Conflict boss | `const BOSS`, `drawConflict()` and the `battle.boss` checks |
-| Saving | `save()` and `loadSave()` |
+| Trainers | `const TRAINERS` and `beatTrainer()` |
+| Shiny Octocats | `SHINY_RATE` and `drawCat()` |
+| Achievements | `const ACHIEVEMENTS` and `unlock()` |
+| Settings and key bindings | `KEY_ACTIONS`, `applySettings()` and `refreshKeyLabels()` |
+| Saving | `save()` and `loadSave()` (progress), `saveMeta()` (achievements, best time) |
+| Installable app and offline play | [`pwa/`](pwa/) (manifest, icons, service worker), copied next to the page by the Pages workflow |
 | Badger badge | [`badge/`](badge/README.md) and [`docs/BADGE_PROTOCOL.md`](docs/BADGE_PROTOCOL.md) |
 
 ## Run it locally
