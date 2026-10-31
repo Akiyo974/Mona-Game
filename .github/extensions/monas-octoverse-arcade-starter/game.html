@@ -15,12 +15,16 @@
   <meta property="og:title" content="Fort Mason Octodex">
   <meta property="og:description" content="Explore Fort Mason, San Francisco, catch all twelve Octocats and win Git-powered battles.">
   <meta property="og:url" content="https://akiyo974.github.io/Mona-Game/">
-  <meta property="og:image" content="https://akiyo974.github.io/Mona-Game/og.png">
-  <meta property="og:image:alt" content="Octocats in front of the Golden Gate Bridge on the Fort Mason Octodex title screen">
+  <meta property="og:image" content="https://akiyo974.github.io/Mona-Game/og.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Fort Mason Octodex: a battle in front of the Golden Gate Bridge, shown in the browser and on a GitHub Badger badge">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Fort Mason Octodex">
   <meta name="twitter:description" content="Catch all twelve GitHub Octocats around San Francisco's Fort Mason.">
-  <meta name="twitter:image" content="https://akiyo974.github.io/Mona-Game/og.png">
+  <meta name="twitter:image" content="https://akiyo974.github.io/Mona-Game/og.jpg">
+  <meta name="twitter:image:alt" content="Fort Mason Octodex: a battle in front of the Golden Gate Bridge, shown in the browser and on a GitHub Badger badge">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a371f7'/%3E%3Cstop offset='1' stop-color='%2358a6ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='29' fill='%230d1117' stroke='url(%23g)' stroke-width='5'/%3E%3Cpath d='M17 31 16 13l9 7c4-1.5 10-1.5 14 0l9-7-1 18c1 2 1 3 1 5 0 8-7 12-16 12s-16-4-16-12c0-2 0-3 1-5z' fill='%23e6edf3'/%3E%3Cellipse cx='32' cy='38' rx='11' ry='7' fill='%23f6c9a8'/%3E%3Ccircle cx='27' cy='37' r='2' fill='%234a2216'/%3E%3Ccircle cx='37' cy='37' r='2' fill='%234a2216'/%3E%3Ccircle cx='50' cy='50' r='7' fill='%233fb950' stroke='%230d1117' stroke-width='3'/%3E%3C/svg%3E">
   <style>
     :root {
@@ -146,8 +150,8 @@
     .move .up { color: #fff3b0; } .move .down { color: #ffc2bd; }
     #battleMsg::after { content: "▼"; display: inline-block; margin-left: 0.4rem; color: var(--gold); font-size: 0.65rem; animation: nudge .8s ease-in-out infinite; }
     @keyframes nudge { 50% { transform: translateY(3px); } }
-    #battleUI .row { display: flex; flex-direction: column; gap: 0.4rem; min-width: 8.5rem; }
-    #battleUI .row button { flex: 1; }
+    #battleUI .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; min-width: 15rem; }
+    #battleUI .row button { padding-inline: 0.5rem; white-space: nowrap; }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .title {
       align-items: center; justify-content: center; gap: 0.3rem; text-align: center; cursor: pointer;
@@ -166,15 +170,38 @@
     @keyframes blink { 50% { opacity: .35; } }
     .title .hint { margin: 0.9rem 0 0; color: var(--muted); font: 0.72rem/1.4 var(--mono); }
     .help { margin: 0.65rem 0 0; color: var(--muted); font-size: 0.78rem; }
+    .credits { align-items: center; text-align: center; background: radial-gradient(circle at 50% 30%, rgba(35,22,70,.9), rgba(3,5,10,.97) 70%); }
+    .credits .roll { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; animation: roll 9s ease-out both; }
+    @keyframes roll { from { transform: translateY(70%); opacity: 0; } 15% { opacity: 1; } }
+    .credits canvas { width: min(100%, 420px); height: auto; }
+    .credits h2 { margin: 0; font: 900 clamp(1.4rem, 5vw, 2rem)/1.1 var(--mono); background: linear-gradient(180deg, #fff, var(--green-hi)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .credits h3 { margin: 0.7rem 0 0; color: var(--green-hi); font: 700 0.68rem/1 var(--mono); letter-spacing: 0.3em; text-transform: uppercase; }
+    .credits p, .credits ul { margin: 0; padding: 0; color: #c9d1d9; font: 0.82rem/1.5 var(--mono); list-style: none; }
+    .credits .kicker { color: var(--gold); font: 700 0.7rem/1 var(--mono); letter-spacing: 0.35em; text-transform: uppercase; }
+    .credits button { margin-top: 0.9rem; }
+    /* on-screen D-pad and A/B buttons, shown on touch screens */
+    .touchpad { display: none; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 0.8rem; padding: 0 0.3rem; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+    .touch .touchpad { display: flex; }
+    .touch .help { display: none; }
+    .dpad { position: relative; flex: none; width: 9.6rem; height: 9.6rem; border-radius: 50%; background: radial-gradient(circle, #1a2133 0 58%, #0e1320 59%); border: 1px solid var(--edge); box-shadow: inset 0 0 18px rgba(88,166,255,.12); touch-action: none; }
+    .dpad i { position: absolute; display: grid; place-items: center; width: 3.2rem; height: 3.2rem; color: var(--muted); font: 900 1rem/1 var(--mono); font-style: normal; background: linear-gradient(180deg, #2d3548, #1b2133); border: 1px solid #3d4a6b; border-radius: 0.65rem; box-shadow: 0 3px 0 #0b0f19; pointer-events: none; }
+    .dpad .u { top: 0.25rem; left: 50%; transform: translateX(-50%); } .dpad .d { bottom: 0.25rem; left: 50%; transform: translateX(-50%); }
+    .dpad .l { left: 0.25rem; top: 50%; transform: translateY(-50%); } .dpad .r { right: 0.25rem; top: 50%; transform: translateY(-50%); }
+    .dpad i.on { color: #04140a; background: linear-gradient(180deg, var(--green-hi), var(--green)); box-shadow: 0 1px 0 #196c2e; }
+    .ab { display: flex; gap: 0.9rem; padding-right: 0.2rem; }
+    .ab button { width: 4.3rem; height: 4.3rem; padding: 0; font-size: 1.3rem; border-radius: 50%; touch-action: none; }
+    .ab button:first-child { margin-top: 2.6rem; }
+    .ab button.on { transform: translateY(2px); filter: brightness(1.25); }
     kbd { display: inline-block; min-width: 1.3em; padding: 0 0.3rem; color: var(--ink); text-align: center; background: linear-gradient(180deg, #2d3548, #1b2133); border: 1px solid #3d4a6b; border-bottom-width: 2px; border-radius: 0.3rem; font: 700 0.7rem/1.5 var(--mono); }
     @media (max-width: 520px) {
       #battleUI { left: 8px; right: 8px; bottom: 8px; gap: 0.3rem; padding: 0.4rem 0.55rem; }
       #battleMsg, #battleUI.busy #battleMsg { min-height: 0; font-size: 0.72rem; }
       .controls { flex-direction: column; gap: 0.3rem; }
       .move { padding: 0.3rem 0.45rem; font-size: 0.66rem; }
-      #battleUI .row { flex-direction: row; min-width: 0; }
+      #battleUI .row { grid-template-columns: repeat(4, 1fr); min-width: 0; }
       #battleUI .row button { padding: 0.4rem 0.5rem; font-size: 0.66rem; }
     }
+    @media (max-width: 520px) { body { padding: 0.4rem; } main { padding: 0.6rem; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
   </style>
 </head>
@@ -209,7 +236,7 @@
         <h2>OCTODEX</h2>
         <p class="sub">Fort Mason · San Francisco · Catch every Octocat</p>
         <button id="startBtn" type="button">▶ Press start</button>
-        <p class="hint">Enter / Space · controller A / Start · badge select</p>
+        <p class="hint">Enter / Space · controller A / Start · badge select · tap</p>
       </section>
       <section class="overlay" id="pick" hidden aria-label="Choose your Octocat">
         <header><h2 id="pickTitle">Choose your Octocat</h2><button id="pickRun" type="button" class="secondary">Run (Esc)</button></header>
@@ -220,17 +247,43 @@
         <p id="battleSr" class="sr" role="status" aria-live="polite"></p>
         <div class="controls">
           <div class="moves" id="moves"></div>
-          <div class="row"><button id="switchBtn" type="button" class="secondary">Switch (S)</button><button id="runBtn" type="button" class="secondary">Run (Esc)</button></div>
+          <div class="row"><button id="hotfixBtn" type="button" class="secondary" title="Restores half of your Octocat's HP. The foe still attacks.">Hotfix</button><button id="revertBtn" type="button" class="secondary" title="Undoes the last turn: both Octocats go back to how they were.">Revert</button><button id="switchBtn" type="button" class="secondary">Switch (S)</button><button id="runBtn" type="button" class="secondary">Run (Esc)</button></div>
         </div>
       </div>
       <section class="overlay" id="inv" hidden aria-label="Inventory">
         <header><h2>Octodex <span id="invCount"></span></h2><button id="closeInv" type="button">Close (I)</button></header>
         <div class="grid" id="grid"></div>
         <p id="detail">Select an Octocat to see where you found it.</p>
-        <div><button id="resetBtn" type="button" class="secondary">Reset progress</button></div>
+        <p id="bag" class="help"></p>
+        <div><button id="resetBtn" type="button" class="secondary">Reset progress</button> <button id="creditsAgain" type="button" class="secondary" hidden>Credits</button></div>
+      </section>
+      <section class="overlay credits" id="credits" hidden aria-label="Credits">
+        <div class="roll">
+          <p class="kicker">Merge conflict resolved</p>
+          <h2>Thanks for playing!</h2>
+          <p>All 12 Octocats caught. GitHub Universe ships on time.</p>
+          <canvas id="creditsArt" width="420" height="96" aria-hidden="true"></canvas>
+          <h3>Made by</h3>
+          <ul>
+            <li>Christen Dijoux · @Akiyo974</li>
+            <li>Chanrattnak Mong · @rattnak</li>
+            <li>Brett Post · @BrettPost</li>
+            <li>Don Ebben · @debben</li>
+            <li>Luke Vandekieft</li>
+          </ul>
+          <h3>Built during</h3>
+          <p>GitHub Day of Learning, with GitHub Copilot</p>
+          <h3>Filmed on location</h3>
+          <p>Fort Mason, San Francisco</p>
+          <button id="creditsBtn" type="button">Keep exploring</button>
+        </div>
       </section>
     </div>
-    <p class="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. Walk into an Octocat to collect it. <kbd>I</kbd> opens the Octodex, <kbd>M</kbd> toggles music, <kbd>1</kbd>–<kbd>4</kbd> pick a move in battle, <kbd>S</kbd> switches Octocat. Code beats Ops, Ops beats Security, Security beats Code.</p>
+    <div class="touchpad" id="touchpad" aria-hidden="true">
+      <div class="dpad" id="dpad"><i class="u">▲</i><i class="l">◀</i><i class="r">▶</i><i class="d">▼</i></div>
+      <div class="ab"><button type="button" class="secondary" data-key="back" tabindex="-1">B</button><button type="button" data-key="select" tabindex="-1">A</button></div>
+    </div>
+    <p class="help">Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. Walk into an Octocat to collect it. <kbd>I</kbd> opens the Octodex, <kbd>M</kbd> toggles music, <kbd>1</kbd>–<kbd>4</kbd> pick a move in battle, <kbd>H</kbd> uses a Hotfix, <kbd>R</kbd> a Revert, <kbd>S</kbd> switches Octocat. Code beats Ops, Ops beats Security, Security beats Code. Your progress is saved in this browser.</p>
   </main>
   <script>
     // Drop in your own art here: paths/URLs relative to this page. Leave null to use the built-in placeholders.
@@ -491,6 +544,7 @@
     /* ---------- State ---------- */
     let collected = new Set(), keys = {}, last = 0, toastT = 0, selected = null, time = 0;
     let scene = "title", battle = null, encounterCd = 0, pendingFoe = null;
+    let bag = { hotfix: 0, revert: 0 }, bossBeaten = false, saveT = 0;
     const player = { x: SPAWN.tx * TS + TS / 2, y: SPAWN.ty * TS + TS / 2, dir: "down", moving: false, w: 20, h: 12, speed: 150 };
     /* ---------- Battle data: GitHub types, moves and Octocat kits ---------- */
     const TYPES = {
@@ -513,7 +567,9 @@
       "Fork Bomb":          { type: "OPS",  pow: 120, acc: 55,  desc: "Huge damage, often fails." },
       "Code Review":        { type: "SEC",  pow: 45,  acc: 100, debuff: true, desc: "Finds weaknesses: lowers Defense." },
       "Dependabot":         { type: "SEC",  pow: 60,  acc: 95,  desc: "Patches in a hit." },
-      "Secret Scan":        { type: "SEC",  pow: 75,  acc: 85,  desc: "Exposes leaked secrets." }
+      "Secret Scan":        { type: "SEC",  pow: 75,  acc: 85,  desc: "Exposes leaked secrets." },
+      "Conflict Storm":     { type: "GIT",  pow: 80,  acc: 90,  desc: "Hits from both sides of the conflict." },
+      "Blame Beam":         { type: "SEC",  pow: 70,  acc: 95,  desc: "Runs git blame on you." }
     };
     // base stats: [HP, Attack, Defense, Speed]
     const KITS = {
@@ -528,12 +584,32 @@
       privateer:    { type: "SEC",  base: [70, 65, 60, 50], moves: ["Dependabot", "Secret Scan", "Force Push", "Stash Smash"] },
       nyantocat:    { type: "CODE", base: [55, 55, 50, 90], moves: ["Branch Slash", "Rebase Rush", "Refactor", "Commit Strike"] },
       chellocat:    { type: "OPS",  base: [60, 70, 55, 60], moves: ["Deploy Blast", "Fork Bomb", "Code Review", "Merge Slam"] },
-      defunktocat:  { type: "CODE", base: [70, 60, 65, 45], moves: ["Pull Request Punch", "Refactor", "Copilot Assist", "Merge Slam"] }
+      defunktocat:  { type: "CODE", base: [70, 60, 65, 45], moves: ["Pull Request Punch", "Refactor", "Copilot Assist", "Merge Slam"] },
+      mergeconflict:{ type: "CODE", base: [125, 72, 66, 58], moves: ["Conflict Storm", "Blame Beam", "Force Push", "Merge Slam"] }
     };
+    // The final boss: it appears in front of Fort Mason Center once all twelve Octocats are caught
+    const BOSS = { id: "mergeconflict", name: "Merge Conflict", tx: 15, ty: 15, color: "#f85149", where: "Blocking the doors of Fort Mason Center." };
+    const BOSS_TYPES = ["CODE", "OPS", "SEC"];               // its changes keep flipping between types
+    const bossReady = () => collected.size === OCTOCATS.length && !bossBeaten;
     const kitOf = (id) => KITS[id] || KITS.octocat;
     const teamLevel = () => 6 + collected.size * 3;           // your Octocats grow with every catch
     const foeLevel = () => 4 + collected.size * 3;
-    const save = () => {}; // progress is not persisted: every load starts with 0 Octocats
+    /* Progress (Octodex, items, boss, position) lives in this browser's localStorage */
+    const SAVE_KEY = "fort-mason-octodex";
+    function save() {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, dex: [...collected], bag, boss: bossBeaten, at: [Math.round(player.x), Math.round(player.y)] })); }
+      catch (e) { /* storage blocked: the game still works, it just won't remember */ }
+    }
+    function loadSave() {
+      let d = null;
+      try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return; }
+      if (!d || d.v !== 1) return;
+      collected = new Set((d.dex || []).filter((id) => OCTOCATS.some((c) => c.id === id)));
+      bag = { hotfix: Math.max(0, d.bag && d.bag.hotfix | 0), revert: Math.max(0, d.bag && d.bag.revert | 0) };
+      bossBeaten = !!d.boss && collected.size === OCTOCATS.length;
+      const [x, y] = d.at || [];
+      if (Number.isFinite(x) && Number.isFinite(y) && !blocked(x, y)) { player.x = x; player.y = y; }
+    }
 
     const images = {};
     function loadImg(key, src) { if (!src) return; const im = new Image(); im.onload = () => { images[key] = im; }; im.src = src; }
@@ -545,7 +621,28 @@
       octocat: "classic", mona: "mona", dinotocat: "dino", daftpunkcat: "daft", jetpacktocat: "jetpack", spidertocat: "spider",
       scottocat: "scott", heisencat: "heisen", privateer: "pirate", nyantocat: "nyan", chellocat: "chell", defunktocat: "defunkt"
     };
+    const conflictCv = document.createElement("canvas"), conflictCtx = conflictCv.getContext("2d");
+    function drawConflict(c, x, y, s, t) {
+      // an Octocat torn in two: "ours" tinted green on the left, "theirs" red on the right, with conflict markers
+      const n = Math.ceil(s * 1.3), g = conflictCtx;
+      if (conflictCv.width !== n) conflictCv.width = conflictCv.height = n;
+      g.clearRect(0, 0, n, n);
+      drawOctocat(g, n / 2, n / 2, s, "octocat", "#6e5494", t);
+      g.globalCompositeOperation = "source-atop";
+      g.fillStyle = "rgba(63,185,80,.5)"; g.fillRect(0, 0, n / 2, n);
+      g.fillStyle = "rgba(248,81,73,.55)"; g.fillRect(n / 2, 0, n / 2, n);
+      g.globalCompositeOperation = "source-over";
+      const gap = s * (0.03 + 0.025 * (1 + Math.sin(t * 6))), jit = Math.sin(t * 17) * s * 0.012;
+      c.drawImage(conflictCv, 0, 0, n / 2, n, x - n / 2 - gap, y - n / 2 + jit, n / 2, n);
+      c.drawImage(conflictCv, n / 2, 0, n / 2, n, x + gap, y - n / 2 - jit, n / 2, n);
+      c.save(); c.font = `900 ${Math.max(7, s * 0.11)}px ui-monospace, Menlo, monospace`; c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillStyle = "#7ee787"; c.fillText("<<<<<<<", x - s * 0.24, y - s * 0.56);
+      c.fillStyle = "#ff7b72"; c.fillText(">>>>>>>", x + s * 0.24, y + s * 0.56);
+      c.fillStyle = "#f2cc60"; for (let k = -4; k <= 4; k++) c.fillRect(x - s * 0.006, y + k * s * 0.09 - s * 0.025, s * 0.012, s * 0.05);
+      c.restore();
+    }
     function drawOctocat(c, x, y, s, id, color, t, img) {
+      if (id === BOSS.id) return drawConflict(c, x, y, s, t);
       if (img) { c.drawImage(img, x - s / 2, y - s / 2, s, s); return; }
       const kind = OCTOCAT_STYLES[id] || "classic", b = Math.sin(t * 4) * s * 0.03;
       const body = { dino: "#3fa34d", spider: "#d1242f", nyan: "#9198a1" }[kind] || "#24292f";
@@ -881,8 +978,12 @@
     }
     function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("show"); toastT = 2.2; }
     function collect(c) {
-      collected.add(c.id); save(); updateCount();
-      toast(collected.size === OCTOCATS.length ? "You caught them all! Open your inventory (I)." : "Collected " + c.name + "!");
+      collected.add(c.id);
+      // items: the first Octocat comes with a starter kit, every catch adds a Hotfix, every fourth a Revert
+      const gift = collected.size === 1 ? { hotfix: 2, revert: 1 } : { hotfix: 1, revert: collected.size % 4 === 0 ? 1 : 0 };
+      bag.hotfix = Math.min(9, bag.hotfix + gift.hotfix); bag.revert = Math.min(9, bag.revert + gift.revert);
+      save(); updateCount();
+      toast(collected.size === OCTOCATS.length ? "You caught them all! A Merge Conflict is blocking Fort Mason Center..." : collected.size === 1 ? "Collected " + c.name + "! You got 2 Hotfix and 1 Revert." : "Collected " + c.name + "!");
       if (!$("inv").hidden) renderInventory();
     }
     function update(dt) {
@@ -906,6 +1007,8 @@
           break;
         }
       }
+      if (scene === "world" && encounterCd <= 0 && bossReady() && Math.hypot(player.x - (BOSS.tx * TS + TS / 2), (player.y - 8) - (BOSS.ty * TS + TS / 2)) < 28) startPick(BOSS);
+      if ((saveT -= dt) <= 0) { saveT = 3; save(); }
       if (toastT > 0 && (toastT -= dt) <= 0) $("toast").classList.remove("show");
     }
 
@@ -958,6 +1061,19 @@
           ctx.fillStyle = "#fff"; ctx.strokeStyle = "#0b0f19"; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.roundRect(cx - 8, by - 10, 16, 18, 5); ctx.fill(); ctx.stroke();
           ctx.fillStyle = "#da3633"; ctx.font = "900 14px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("!", cx, by);
+        }
+      }
+      if (bossReady()) {                                       // the Merge Conflict boss
+        const cx = BOSS.tx * TS + TS / 2, cy = BOSS.ty * TS + TS / 2, pulse = 0.5 + 0.5 * Math.sin(time * 4);
+        const aura = ctx.createRadialGradient(cx, cy, 6, cx, cy, 48 + pulse * 8);
+        aura.addColorStop(0, "rgba(248,81,73,.45)"); aura.addColorStop(0.5, "rgba(63,185,80,.2)"); aura.addColorStop(1, "rgba(63,185,80,0)");
+        ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(cx, cy, 56, 0, 7); ctx.fill();
+        ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(cx, cy + 20, 18, 6, 0, 0, 7); ctx.fill();
+        drawOctocat(ctx, cx, cy - 4 + Math.sin(time * 2) * 2, 46, BOSS.id, BOSS.color, time);
+        if (Math.hypot(player.x - cx, player.y - cy) < TS * 4) {
+          ctx.fillStyle = "#0b0f19"; ctx.strokeStyle = "#f85149"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.roundRect(cx - 58, cy - 62, 116, 20, 6); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#ff7b72"; ctx.font = "900 11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("MERGE CONFLICT", cx, cy - 52);
         }
       }
       { // Alcatraz lighthouse beam
@@ -1027,6 +1143,7 @@
       for (const c of OCTOCATS) if (!collected.has(c.id)) {
         ctx.fillStyle = Math.sin(time * 5 + c.tx) > 0 ? "#ffd33d" : "#f85149"; ctx.fillRect(mx + c.tx * 2 - 1, my + c.ty * 2 - 1, 3, 3);
       }
+      if (bossReady()) { ctx.fillStyle = Math.sin(time * 8) > 0 ? "#f85149" : "#7ee787"; ctx.fillRect(mx + BOSS.tx * 2 - 2, my + BOSS.ty * 2 - 2, 5, 5); }
       ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(mx + player.x / TS * 2, my + player.y / TS * 2, 2.5, 0, 7); ctx.fill();
       ctx.restore();
     }
@@ -1034,6 +1151,7 @@
       const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt; frameDt = dt;
       pollGamepad(); badgeTick(dt);
       if (scene === "title") drawTitleArt();
+      if (scene === "credits") drawCreditsArt();
       if (scene === "battle") { updateBattle(dt); if (scene === "battle") renderBattle(); else render(); }
       else { if (scene === "world" && $("inv").hidden) update(dt); render(); }
       if (toastT > 0 && scene !== "world" && (toastT -= dt) <= 0) $("toast").classList.remove("show");
@@ -1059,8 +1177,31 @@
     function startGame() {
       if (scene !== "title") return;
       scene = "world"; $("title").hidden = true; cv.focus();
-      toast("Welcome to Fort Mason! Find all " + OCTOCATS.length + " Octocats.");
+      toast(bossReady() ? "The Merge Conflict is waiting at Fort Mason Center!" : collected.size ? "Welcome back! " + collected.size + "/" + OCTOCATS.length + " Octocats in your Octodex." : "Welcome to Fort Mason! Find all " + OCTOCATS.length + " Octocats.");
     }
+
+    /* ---------- Credits ---------- */
+    const creditsCtx = $("creditsArt").getContext("2d");
+    function drawCreditsArt() {
+      const c = creditsCtx; c.clearRect(0, 0, 420, 96);
+      OCTOCATS.forEach((cat, i) => {
+        const x = 20 + i * 34.5, y = 50 + Math.sin(time * 4 + i * 0.7) * 6;
+        c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.ellipse(x, 84, 11, 3, 0, 0, 7); c.fill();
+        drawOctocat(c, x, y, 40, cat.id, cat.color, time + i, images[cat.id]);
+      });
+    }
+    function showCredits() {
+      scene = "credits"; keys = {}; player.moving = false;
+      const el = $("credits"), roll = el.querySelector(".roll");
+      roll.style.animation = "none"; void roll.offsetWidth; roll.style.animation = "";
+      el.hidden = false; el.scrollTop = 0; $("creditsBtn").focus();
+    }
+    function closeCredits() {
+      if (scene !== "credits") return;
+      $("credits").hidden = true; scene = "world"; encounterCd = 1; cv.focus();
+    }
+    $("creditsBtn").addEventListener("click", closeCredits);
+    $("creditsAgain").addEventListener("click", () => { setInventory(false); showCredits(); });
     $("title").addEventListener("click", startGame);
 
     /* ---------- Battles ---------- */
@@ -1071,6 +1212,7 @@
     }
     const stage = (n) => n >= 0 ? (2 + n) / 2 : 2 / (2 - n);
     const sideKey = (side) => side === battle.me ? "me" : "foe";
+    const label = (side) => (side === battle.foe && !battle.boss ? "Wild " : "") + side.cat.name;
     function startPick(foe) {
       scene = "pick"; pendingFoe = foe; keys = {}; player.moving = false;
       $("pickTitle").textContent = "Choose an Octocat to battle " + foe.name;
@@ -1095,9 +1237,10 @@
       scene = "battle"; $("pick").hidden = true; $("battleUI").hidden = false; $("toast").classList.remove("show"); toastT = 0;
       const team = {};
       for (const id of collected) team[id] = null;              // null = full HP
-      battle = { me: makeSide(fighter, teamLevel()), foe: makeSide(foe, foeLevel()), team, age: 0, phase: "intro", steps: [], step: null, stepT: 0, anim: null, after: null, parts: [], pops: [], picking: false };
+      const boss = foe === BOSS;
+      battle = { me: makeSide(fighter, teamLevel()), foe: makeSide(foe, boss ? teamLevel() + 3 : foeLevel()), team, age: 0, phase: "intro", steps: [], step: null, stepT: 0, anim: null, after: null, parts: [], pops: [], picking: false, boss, undo: null };
       setChoosing(false); Music.play("battle");
-      runSteps([{ msg: "A wild " + foe.name + " appeared!", dur: 1.4 }, { msg: "Go, " + fighter.name + "!", dur: 0.9 }], choose);
+      runSteps([{ msg: boss ? "The Merge Conflict blocks the doors of Fort Mason Center!" : "A wild " + foe.name + " appeared!", dur: boss ? 1.9 : 1.4 }, { msg: "Go, " + fighter.name + "!", dur: 0.9 }], choose);
     }
 
     /* step queue: each step shows a message for `dur` seconds and may start an animation */
@@ -1131,6 +1274,8 @@
         box.appendChild(btn);
       });
       $("switchBtn").disabled = aliveTeam().filter((id) => id !== battle.me.cat.id).length === 0;
+      $("hotfixBtn").textContent = "Hotfix ×" + bag.hotfix + " (H)"; $("hotfixBtn").disabled = !canHotfix();
+      $("revertBtn").textContent = "Revert ×" + bag.revert + " (R)"; $("revertBtn").disabled = !canRevert();
       box.firstChild.focus();
     }
     function choose() { battle.phase = "choose"; setMsg("What will " + battle.me.cat.name + " do?"); setChoosing(true); }
@@ -1160,7 +1305,7 @@
         start(s) {
           const a = attacker(), d = a === battle.me ? battle.foe : battle.me, m = MOVES[moveName];
           if (a.hp <= 0 || d.hp <= 0) { s.dur = 0; return; }
-          const who = sideKey(a), r = resolve(a, d, m), name = (who === "foe" ? "Wild " : "") + a.cat.name;
+          const who = sideKey(a), r = resolve(a, d, m), name = label(a);
           s.msg = name + " used " + moveName + "!";
           const follow = [];
           if (r.heal != null) {
@@ -1178,7 +1323,7 @@
               if (r.eff > 1) follow.push({ msg: "It's super effective!", dur: 0.9 });
               if (r.eff < 1) follow.push({ msg: "It's not very effective...", dur: 0.9 });
               if (r.lowered) follow.push({ msg: d.cat.name + "'s Defense fell!", dur: 0.8 });
-              if (d.hp <= 0) follow.push({ msg: (d === battle.foe ? "Wild " : "") + d.cat.name + " fainted!", dur: 1.3, anim: { kind: "faint", who: sideKey(d) } });
+              if (d.hp <= 0) follow.push({ msg: d === battle.foe && battle.boss ? "The Merge Conflict is resolved!" : label(d) + " fainted!", dur: 1.3, anim: { kind: "faint", who: sideKey(d) } });
             }
           }
           battle.steps.unshift(...follow);
@@ -1188,7 +1333,7 @@
     function useMove(i) {
       if (scene !== "battle" || battle.phase !== "choose" || battle.picking) return;
       const mine = battle.me.moves[i]; if (!mine) return;
-      battle.phase = "turn"; setChoosing(false);
+      snapshot(); battle.phase = "turn"; setChoosing(false);
       const theirs = aiMove(battle.foe, battle.me);
       const meFirst = (MOVES[mine].prio || 0) !== (MOVES[theirs].prio || 0)
         ? (MOVES[mine].prio || 0) > (MOVES[theirs].prio || 0)
@@ -1199,10 +1344,52 @@
     function endTurn() {
       if (battle.foe.hp <= 0) return win();
       if (battle.me.hp <= 0) return meFainted();
+      if (battle.boss) {                                      // the boss's changes flip to the next type every turn
+        const next = BOSS_TYPES[(BOSS_TYPES.indexOf(battle.foe.type) + 1) % BOSS_TYPES.length];
+        battle.foe.type = next;
+        return runSteps([{ msg: "The conflict shifts: it's all " + TYPES[next].label + " changes now!", dur: 1.2 }], choose);
+      }
       choose();
     }
+
+    /* items: Hotfix heals half your HP (the foe still attacks), Revert undoes the last turn */
+    function snapshot() {
+      const copy = (s) => ({ hp: s.hp, st: { ...s.st }, type: s.type });
+      battle.undo = { id: battle.me.cat.id, me: copy(battle.me), foe: copy(battle.foe) };
+    }
+    const canHotfix = () => bag.hotfix > 0 && battle.me.hp < battle.me.max;
+    const canRevert = () => bag.revert > 0 && !!battle.undo && battle.undo.id === battle.me.cat.id;
+    function useItem(kind) {
+      if (scene !== "battle" || battle.phase !== "choose" || battle.picking) return;
+      if (kind === "hotfix" ? !canHotfix() : !canRevert()) return;
+      bag[kind]--; save(); setChoosing(false);
+      const me = battle.me;
+      if (kind === "revert") {
+        battle.phase = "turn";
+        const u = battle.undo; battle.undo = null;
+        runSteps([
+          { msg: "You ran git revert...", dur: 1.0, anim: { kind: "revert" } },
+          { msg: "The last turn never happened!", dur: 1.0, start() { for (const k of ["me", "foe"]) Object.assign(battle[k], { hp: u[k].hp, st: u[k].st, type: u[k].type }); Music.sfx("collect"); } }
+        ], choose);
+        return;
+      }
+      snapshot(); battle.phase = "turn";
+      const heal = { msg: "You shipped a Hotfix to " + me.cat.name + "!", dur: 1.0, anim: { kind: "heal", who: "me" },
+        start() { const amt = Math.min(me.max - me.hp, Math.round(me.max * 0.5)); me.hp += amt; Music.sfx("collect"); battle.steps.unshift({ msg: me.cat.name + " restored " + amt + " HP!", dur: 0.9 }); } };
+      runSteps([heal, actionStep(() => battle.foe, aiMove(battle.foe, battle.me))], endTurn);
+    }
+    $("hotfixBtn").addEventListener("click", () => useItem("hotfix"));
+    $("revertBtn").addEventListener("click", () => useItem("revert"));
+
     function win() {
       const foe = battle.foe.cat;
+      if (battle.boss) {
+        battle.phase = "end"; Music.play(null); Music.sfx("win");
+        runSteps([{ msg: "All checks have passed. GitHub Universe is ready to ship!", dur: 2.4, anim: { kind: "caught" } }], () => {
+          endBattle(); bossBeaten = true; save(); showCredits();
+        });
+        return;
+      }
       battle.phase = "end"; Music.play(null); Music.sfx("win");
       runSteps([
         { msg: "Octodex activated...", dur: 2.2, anim: { kind: "catch" } },
@@ -1244,7 +1431,7 @@
       battle.picking = false; $("pick").hidden = true;
       if (battle.me.hp > 0) battle.team[battle.me.cat.id] = battle.me.hp;
       battle.me = makeSide(c, teamLevel(), battle.team[c.id]);
-      battle.phase = "turn";
+      battle.phase = "turn"; battle.undo = null;
       const steps = [{ msg: "Go, " + c.name + "!", dur: 1.0, anim: { kind: "enter", who: "me" } }];
       if (!forced) steps.push(actionStep(() => battle.foe, aiMove(battle.foe, battle.me)));
       runSteps(steps, endTurn);
@@ -1400,6 +1587,14 @@
         }
         c.globalAlpha = 1;
       }
+      if (A && A.kind === "revert") {                           // Revert: a blue rewind sweep over the field
+        const k = Math.min(1, A.t / 0.9), ex = 46 * Math.cos(0.4), ey = 46 * Math.sin(0.4);
+        c.fillStyle = `rgba(88,166,255,${0.28 * Math.sin(k * Math.PI)})`; c.fillRect(-10, -10, VW + 20, VH + 20);
+        c.save(); c.translate(VW / 2, VH / 2 - 20); c.rotate(-A.t * 9); c.globalAlpha = Math.sin(k * Math.PI);
+        c.strokeStyle = "#cfe3ff"; c.lineWidth = 6; c.beginPath(); c.arc(0, 0, 46, 0.4, Math.PI * 1.6); c.stroke();
+        c.fillStyle = "#cfe3ff"; c.beginPath(); c.moveTo(ex - 12, ey); c.lineTo(ex + 12, ey); c.lineTo(ex, ey - 16); c.closePath(); c.fill();
+        c.restore();
+      }
       if (A && A.kind === "lunge" && lp > 0.45 && lp < 0.85) {   // impact burst
         const T = A.who === "me" ? pos.foe : pos.me;
         c.save(); c.translate(T.x, T.y); c.rotate(A.t * 8); c.fillStyle = A.hit ? (A.crit ? "#ffa657" : "#ffd33d") : "#8b949e"; c.beginPath();
@@ -1470,6 +1665,8 @@
     }
     function renderInventory() {
       const g = $("grid"); g.textContent = "";
+      $("bag").textContent = "Items: " + bag.hotfix + " Hotfix (heals half HP) · " + bag.revert + " Revert (undoes a turn)" + (bossBeaten ? " · Merge Conflict resolved ✔" : bossReady() ? " · The Merge Conflict waits at Fort Mason Center" : "");
+      $("creditsAgain").hidden = !bossBeaten;
       $("invCount").textContent = "(" + collected.size + "/" + OCTOCATS.length + ")";
       for (const c of OCTOCATS) {
         const found = collected.has(c.id);
@@ -1495,7 +1692,7 @@
     $("runBtn").addEventListener("click", runAway);
     $("pickRun").addEventListener("click", runAway);
     $("resetBtn").addEventListener("click", () => {
-      collected = new Set(); save(); selected = null; updateCount(); renderInventory();
+      collected = new Set(); bag = { hotfix: 0, revert: 0 }; bossBeaten = false; save(); selected = null; updateCount(); renderInventory();
       $("detail").textContent = "Progress reset. Go find them again!";
     });
 
@@ -1507,11 +1704,14 @@
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (k === "m") { Music.toggleMute(); return; }
       if (scene === "title") { if (k === "Enter" || k === " " || MOVE_KEYS.has(k)) { e.preventDefault(); startGame(); } return; }
+      if (scene === "credits") { if (k === "Escape") closeCredits(); return; }
       if (scene === "battle" || scene === "pick") {
         if (k === "Escape") runAway();
         else if (scene === "battle" && !battle.picking && /^[1-4]$/.test(k)) useMove(+k - 1);
         else if (scene === "battle" && k === "f") useMove(0);
         else if (scene === "battle" && k === "s") openSwitch(false);
+        else if (scene === "battle" && k === "h") useItem("hotfix");
+        else if (scene === "battle" && k === "r") useItem("revert");
         return;
       }
       if (k === "i") { setInventory($("inv").hidden); return; }
@@ -1545,18 +1745,21 @@
         x = g.axes[0] || 0; y = g.axes[1] || 0;
         if (Math.hypot(x, y) < DEAD) x = y = 0;
       }
-      // Badge buttons (USB serial) are merged with the gamepad: up/down/left/right, select = A, back = B
-      x += (b(15) || badgeHeld.has("right") ? 1 : 0) - (b(14) || badgeHeld.has("left") ? 1 : 0);
-      y += (b(13) || badgeHeld.has("down") ? 1 : 0) - (b(12) || badgeHeld.has("up") ? 1 : 0);
+      // Badge buttons (USB serial) and the touch pad are merged with the gamepad: up/down/left/right, select = A, back = B
+      const held = (k) => badgeHeld.has(k) || touchHeld.has(k);
+      x += (b(15) || held("right") ? 1 : 0) - (b(14) || held("left") ? 1 : 0);
+      y += (b(13) || held("down") ? 1 : 0) - (b(12) || held("up") ? 1 : 0);
       const inGame = scene === "world" && $("inv").hidden;
       pad.x = inGame ? x : 0; pad.y = inGame ? y : 0;
-      const A = b(0) || badgeHeld.has("select"), B = b(1) || badgeHeld.has("back");
+      const A = b(0) || held("select"), B = b(1) || held("back");
       const Y = b(3) || b(9);
       const was = pad.prev;
       const L = x < -0.5, R = x > 0.5, U = y < -0.5, D = y > 0.5;
       pad.prev = { A, B, Y, L, R, U, D };
       if (scene === "title") {
         if ((A && !was.A) || (Y && !was.Y)) startGame();
+      } else if (scene === "credits") {
+        if ((A && !was.A) || (B && !was.B)) closeCredits();
       } else if (scene === "pick" || (scene === "battle" && battle.picking)) {
         // D-pad / stick moves the highlight over the Octocat cards, A picks the fighter, B runs
         const cards = [...$("pickGrid").children];
@@ -1634,7 +1837,7 @@
           sel: Math.max(0, btns.indexOf(document.activeElement)), canSwitch: !$("switchBtn").disabled
         };
       }
-      if (!$("inv").hidden) return { t: "dex", found: OCTOCATS.filter((c) => collected.has(c.id)).map((c) => c.name), total: OCTOCATS.length };
+      if (!$("inv").hidden || scene === "credits") return { t: "dex", found: OCTOCATS.filter((c) => collected.has(c.id)).map((c) => c.name), total: OCTOCATS.length };
       return { t: "world", area: area || "Fort Mason", dex: collected.size, total: OCTOCATS.length, lv: teamLevel(),
         me: [Math.floor(player.x / TS), Math.floor(player.y / TS)], left: OCTOCATS.filter((c) => !collected.has(c.id)).map((c) => [c.tx, c.ty]) };
     }
@@ -1692,6 +1895,42 @@
     }
     $("badgeBtn").addEventListener("click", () => { if (!badgePort) connectBadge(); });
 
+    /* ---------- Touch controls (phones and tablets) ---------- */
+    // The on-screen D-pad and A/B buttons feed the same inputs as the badge: up/down/left/right, select = A, back = B
+    const touchHeld = new Set();
+    const markTouch = () => document.documentElement.classList.add("touch");
+    if (matchMedia("(pointer: coarse)").matches) markTouch();
+    addEventListener("touchstart", markTouch, { once: true, passive: true });
+    {
+      const dpad = $("dpad"), arrows = { up: dpad.querySelector(".u"), down: dpad.querySelector(".d"), left: dpad.querySelector(".l"), right: dpad.querySelector(".r") };
+      const setDirs = (dirs) => { for (const k in arrows) { const on = dirs.includes(k); arrows[k].classList.toggle("on", on); on ? touchHeld.add(k) : touchHeld.delete(k); } };
+      const aim = (e) => {
+        const r = dpad.getBoundingClientRect(), x = e.clientX - (r.left + r.width / 2), y = e.clientY - (r.top + r.height / 2);
+        if (Math.hypot(x, y) < r.width * 0.12) return setDirs([]);
+        const a = Math.atan2(y, x) / Math.PI * 4, dirs = [];        // 8 sectors: diagonals press two arrows
+        if (a > -3.5 && a < -0.5) dirs.push("up");
+        if (a > 0.5 && a < 3.5) dirs.push("down");
+        if (a > 2.5 || a < -2.5) dirs.push("left");
+        if (a > -1.5 && a < 1.5) dirs.push("right");
+        setDirs(dirs);
+      };
+      const capture = (el, e) => { try { el.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone */ } };
+      let aiming = null;
+      dpad.addEventListener("pointerdown", (e) => { e.preventDefault(); aiming = e.pointerId; capture(dpad, e); aim(e); });
+      dpad.addEventListener("pointermove", (e) => { if (e.pointerId === aiming) aim(e); });
+      for (const ev of ["pointerup", "pointercancel"]) dpad.addEventListener(ev, () => { aiming = null; setDirs([]); });
+      for (const btn of document.querySelectorAll(".ab button")) {
+        const key = btn.dataset.key, up = () => { touchHeld.delete(key); btn.classList.remove("on"); };
+        btn.addEventListener("pointerdown", (e) => { e.preventDefault(); capture(btn, e); touchHeld.add(key); btn.classList.add("on"); });
+        for (const ev of ["pointerup", "pointercancel"]) btn.addEventListener(ev, up);
+      }
+      addEventListener("blur", () => { setDirs([]); touchHeld.delete("select"); touchHeld.delete("back"); });
+    }
+    addEventListener("pagehide", save);
+    addEventListener("visibilitychange", () => { if (document.hidden) save(); });
+
+    loadSave();
+    if (collected.size) $("startBtn").textContent = "▶ Continue · " + collected.size + "/" + OCTOCATS.length;
     updateCount(); renderInventory();
     requestAnimationFrame((t) => { last = t; loop(t); });
   </script>
