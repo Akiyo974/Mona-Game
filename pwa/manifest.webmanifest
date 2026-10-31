@@ -1,0 +1,19 @@
+{
+  "name": "Fort Mason Octodex",
+  "short_name": "Octodex",
+  "description": "Catch all twelve GitHub Octocats around San Francisco's Fort Mason and battle them with Git, Code, Ops and Security moves.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#070a12",
+  "theme_color": "#0b1020",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
